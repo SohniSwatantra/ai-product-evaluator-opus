@@ -1,15 +1,15 @@
- name: Playwright Product Scraper
+name: Playwright Product Scraper
 
-  on:
-    repository_dispatch:
-      types: [scrape-product]
+on:
+  repository_dispatch:
+    types: [scrape-product]
 
-  jobs:
-    scrape-and-evaluate:
-      timeout-minutes: 60
-      runs-on: ubuntu-latest
+jobs:
+  scrape-and-evaluate:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
 
-      steps:
+    steps:
         - name: Checkout code
           uses: actions/checkout@v4
 
