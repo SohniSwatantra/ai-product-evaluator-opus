@@ -116,18 +116,19 @@ Netlify should auto-detect Next.js. Verify:
 
 Click **Add environment variables** and add:
 
-| Variable Name             | Value                                      |
-|---------------------------|--------------------------------------------|
-| `DATABASE_URL`            | Your Neon PostgreSQL connection string     |
-| `ANTHROPIC_API_KEY`       | Your Anthropic API key                     |
-| `GITHUB_TOKEN`            | Create a GitHub Personal Access Token (see below) |
-| `GITHUB_REPO`             | `SohniSwatantra/ai-product-evaluator`      |
-| `R2_ACCOUNT_ID`           | Cloudflare R2 Account ID                   |
-| `R2_ACCESS_KEY_ID`        | Cloudflare R2 Access Key ID                |
-| `R2_SECRET_ACCESS_KEY`    | Cloudflare R2 Secret Access Key            |
-| `R2_BUCKET_NAME`          | `ai-evaluator-screenshots`                 |
-| `STACK_PROJECT_ID`        | Your Stack Auth Project ID                 |
-| `STACK_SECRET_SERVER_KEY` | Your Stack Auth Server Key                 |
+| Variable Name                              | Value                                      |
+|--------------------------------------------|--------------------------------------------|
+| `DATABASE_URL`                             | Your Neon PostgreSQL connection string     |
+| `ANTHROPIC_API_KEY`                        | Your Anthropic API key                     |
+| `GITHUB_TOKEN`                             | Create a GitHub Personal Access Token (see below) |
+| `GITHUB_REPO`                              | `SohniSwatantra/ai-product-evaluator`      |
+| `R2_ACCOUNT_ID`                            | Cloudflare R2 Account ID                   |
+| `R2_ACCESS_KEY_ID`                         | Cloudflare R2 Access Key ID                |
+| `R2_SECRET_ACCESS_KEY`                     | Cloudflare R2 Secret Access Key            |
+| `R2_BUCKET_NAME`                           | `ai-evaluator-screenshots`                 |
+| `NEXT_PUBLIC_STACK_PROJECT_ID`             | Your Stack Auth Project ID                 |
+| `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Your Stack Auth Publishable Client Key     |
+| `STACK_SECRET_SERVER_KEY`                  | Your Stack Auth Secret Server Key          |
 
 ### 5.4 Create GitHub Personal Access Token
 
