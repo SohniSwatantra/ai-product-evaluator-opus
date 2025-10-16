@@ -112,14 +112,18 @@ export function AgentExperienceSection({ agentExperience }: AgentExperienceSecti
           Recommendations to Improve Agent Experience
         </h4>
         <ul className="space-y-3">
-          {recommendations.map((recommendation, index) => (
-            <li key={index} className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
-                {index + 1}
-              </div>
-              <p className="text-neutral-700 dark:text-neutral-300">{recommendation}</p>
-            </li>
-          ))}
+          {Array.isArray(recommendations) ? (
+            recommendations.map((recommendation, index) => (
+              <li key={index} className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-sm font-semibold flex-shrink-0 mt-0.5">
+                  {index + 1}
+                </div>
+                <p className="text-neutral-700 dark:text-neutral-300">{recommendation}</p>
+              </li>
+            ))
+          ) : (
+            <li className="text-neutral-600 dark:text-neutral-400 italic">No recommendations available</li>
+          )}
         </ul>
       </div>
 
