@@ -5,7 +5,8 @@ import { useUser } from "@stackframe/stack";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { User, Mail, Calendar, TrendingUp, ExternalLink, Trash2, Loader2 } from "lucide-react";
+import { Mail, Calendar, TrendingUp, ExternalLink, Trash2, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { type ProductEvaluation } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,7 @@ export default function ProfilePage() {
       });
 
       if (response.ok) {
-        setEvaluations(evaluations.filter((e: any) => e.id !== id));
+        setEvaluations(evaluations.filter((e) => e.id !== id));
       } else {
         alert("Failed to delete evaluation");
       }
@@ -117,12 +118,12 @@ export default function ProfilePage() {
               </div>
 
               {/* Account Settings Link */}
-              <a
+              <Link
                 href="/handler/account-settings"
                 className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-black dark:text-white transition-colors"
               >
                 Account Settings
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -158,7 +159,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {evaluations.map((evaluation: any) => (
+                {evaluations.map((evaluation) => (
                   <div
                     key={evaluation.id}
                     className="flex items-center gap-4 p-4 rounded-lg border border-black/10 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"

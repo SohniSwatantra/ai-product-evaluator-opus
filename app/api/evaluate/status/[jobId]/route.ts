@@ -31,7 +31,15 @@ export async function GET(
     }
 
     // Return job status
-    const response: any = {
+    const response: {
+      jobId: string;
+      status: string;
+      createdAt: Date;
+      updatedAt: Date;
+      result?: unknown;
+      completedAt?: Date;
+      error?: string;
+    } = {
       jobId: job.id,
       status: job.status, // 'pending', 'processing', 'completed', 'failed'
       createdAt: job.created_at,

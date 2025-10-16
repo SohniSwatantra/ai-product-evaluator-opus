@@ -17,10 +17,10 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [demographics, setDemographics] = useState<Demographics>({
-    ageRange: "" as any,
-    gender: "" as any,
-    incomeTier: "" as any,
-    region: "" as any,
+    ageRange: "",
+    gender: "",
+    incomeTier: "",
+    region: "",
   });
 
   const handleSubmit = (e: React.FormEvent) => {
