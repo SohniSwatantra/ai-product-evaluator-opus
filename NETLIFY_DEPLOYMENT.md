@@ -90,7 +90,7 @@ Add the following secrets:
 | `R2_ACCOUNT_ID`           | Cloudflare R2 Account ID                   |
 | `R2_ACCESS_KEY_ID`        | Cloudflare R2 Access Key ID                |
 | `R2_SECRET_ACCESS_KEY`    | Cloudflare R2 Secret Access Key            |
-| `R2_BUCKET_NAME`          | `ai-evaluator-screenshots`                 |
+| `R2_BUCKET_NAME`          | Your bucket name (e.g., `my-app-screenshots`) |
 
 ---
 
