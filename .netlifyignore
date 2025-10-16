@@ -1,0 +1,2 @@
+# Ignore documentation files that may contain example values
+NETLIFY_DEPLOYMENT.md
