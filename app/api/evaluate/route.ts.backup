@@ -1,0 +1,681 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { type ProductEvaluation } from "@/types";
+import { calculateSSR, getAnchorFromSSRScore, compareMethodologies } from "@/lib/ssr-calculator";
+import { saveEvaluation } from "@/lib/db";
+import { createAXEvaluationPrompt, parseAgentExperience, calculateAXScore } from "@/lib/ax-evaluator";
+import { scrapeWebsite, extractProductInfo } from "@/lib/web-scraper";
+import { stackServerApp } from "@/stack/server";
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || "",
+});
+
+/**
+ * Validate and fix common URL issues
+ */
+function validateAndFixURL(url: string): string {
+  // Remove whitespace
+  url = url.trim();
+
+  // Add https:// if missing protocol
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+
+  // Parse URL to check validity
+  try {
+    const urlObj = new URL(url);
+
+    // Check if URL has a TLD (e.g., .com, .org)
+    if (!urlObj.hostname.includes('.')) {
+      // Common case: user typed "netlify" instead of "netlify.com"
+      urlObj.hostname = urlObj.hostname + '.com';
+      url = urlObj.toString();
+      console.log(`ℹ️  Auto-corrected URL to: ${url}`);
+    }
+
+    return url;
+  } catch (err) {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+}
+
+/**
+ * Clean and parse JSON with aggressive error recovery
+ */
+function cleanAndParseJSON(text: string): any {
+  console.log(`📝 Received response (${text.length} chars). Attempting to parse...`);
+
+  // Log first 200 chars for debugging
+  console.log(`   First 200 chars: ${text.substring(0, 200).replace(/\n/g, '\\n')}`);
+
+  // Remove markdown code blocks if present
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+
+  // NOTE: Skip comment removal - it breaks URLs like https://
+  // The markdown block removal above already handles wrapping
+
+  // Extract JSON - try to find the outermost object
+  let jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    console.error("❌ No JSON object found in response");
+    throw new Error("No JSON found in response");
+  }
+
+  let jsonStr = jsonMatch[0];
+
+  // Try parsing as-is first
+  try {
+    const parsed = JSON.parse(jsonStr);
+    console.log("✅ JSON parsed successfully on first attempt");
+    return parsed;
+  } catch (err) {
+    console.warn("⚠️  Initial JSON parse failed, attempting aggressive cleanup...");
+    console.warn(`   Error: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // Aggressive cleanup strategies
+  try {
+    // Strategy 1: Fix common formatting issues
+    jsonStr = jsonStr
+      .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+      .replace(/\n/g, ' ') // Remove newlines
+      .replace(/\r/g, '') // Remove carriage returns
+      .replace(/\t/g, ' ') // Replace tabs with spaces
+      .replace(/\s+/g, ' '); // Collapse multiple spaces
+
+    // Strategy 2: Fix unquoted keys (more aggressive)
+    jsonStr = jsonStr.replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3');
+
+    // Strategy 3: Fix single quotes to double quotes
+    jsonStr = jsonStr.replace(/'/g, '"');
+
+    // Strategy 4: Fix missing quotes around string values (careful approach)
+    // This is tricky - only fix obvious cases
+    jsonStr = jsonStr.replace(/:\s*([a-zA-Z][a-zA-Z0-9\s-]*?)(\s*[,}])/g, (match, value, ending) => {
+      // Don't quote if it looks like a boolean, null, or number
+      if (['true', 'false', 'null'].includes(value.trim()) || /^\d+(\.\d+)?$/.test(value.trim())) {
+        return match;
+      }
+      return `: "${value.trim()}"${ending}`;
+    });
+
+    const parsed = JSON.parse(jsonStr);
+    console.log("✅ JSON parsed successfully after cleanup");
+    return parsed;
+  } catch (err) {
+    console.error("❌ Cleanup strategies failed");
+    console.error(`   Error: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`   Attempted to parse: ${jsonStr.substring(0, 300)}...`);
+    throw new Error(`Failed to parse JSON even after cleanup: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { productUrl, demographics } = await request.json();
+
+    if (!productUrl) {
+      return NextResponse.json(
+        { error: "Product URL is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!demographics) {
+      return NextResponse.json(
+        { error: "Target audience demographics are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate and fix URL
+    const validatedUrl = validateAndFixURL(productUrl);
+
+    // ========== WEB SCRAPING ==========
+    // Scrape the actual website for real content and screenshots
+    console.log("🌐 Starting web scraping for:", validatedUrl);
+    const scrapedData = await scrapeWebsite(validatedUrl, {
+      timeout: 30000,
+      fullPage: true,
+      viewportWidth: 1920,
+      viewportHeight: 1080,
+    });
+
+    if (scrapedData.error) {
+      console.warn("⚠️ Web scraping failed:", scrapedData.error);
+      console.log("Continuing with generic evaluation...");
+    } else {
+      console.log("✅ Website scraped successfully");
+      console.log("  - Title:", scrapedData.title);
+      console.log("  - Screenshot saved:", scrapedData.screenshotPath);
+    }
+
+    // Extract structured product information
+    const productInfo = extractProductInfo(scrapedData);
+
+    // Format demographics for the prompt
+    const demographicDescription = `
+Target Customer Profile:
+- Age: ${demographics.ageRange} years old
+- Gender: ${demographics.gender}
+- Income: ${demographics.incomeTier === 'low' ? 'Low (<$50k/year)' : demographics.incomeTier === 'medium' ? 'Medium ($50k-$100k/year)' : 'High (>$100k/year)'}
+- Region: ${demographics.region}
+${demographics.ethnicity ? `- Ethnicity: ${demographics.ethnicity}` : ''}`;
+
+    // Create the evaluation prompt based on BOTH research papers
+    const prompt = `You are an AI agent evaluating products using a dual methodology combining insights from TWO research papers:
+1. "What Is Your AI Agent Buying?" (arXiv:2508.02630) - Factor-based product analysis
+2. "LLMs Reproduce Human Purchase Intent" (arXiv:2510.08338v1) - Demographics-driven intent prediction
+
+**PRODUCT TO ANALYZE:** ${productUrl}
+
+**TARGET CUSTOMER DEMOGRAPHICS:**
+${demographicDescription}
+
+**YOUR TASK:** Evaluate how likely THIS SPECIFIC demographic is to purchase from this product page.
+
+## Research-Based Evaluation Framework:
+
+### DEMOGRAPHICS IMPACT (Critical!)
+Based on research findings, analyze how each demographic factor affects purchase intent:
+- **Age**: Different age groups respond to different marketing approaches, trust signals, and price points
+- **Gender**: Purchasing patterns and decision factors vary significantly by gender
+- **Income**: Directly affects price sensitivity and value perception
+- **Region**: Cultural and economic factors influence buying behavior
+- **Ethnicity**: May affect brand affinity and trust signals
+
+### PRODUCT ATTRIBUTES (Identify These)
+1. **Category**: What type of product/service is this? (e.g., personal care, electronics, SaaS, fashion, food)
+2. **Price Tier**: low (<$50), medium ($50-$200), high ($200-$1000), or premium (>$1000)
+3. **Concept Source**: Is this an established brand, new startup, direct-to-consumer, or marketplace seller?
+
+### 6 EVALUATION FACTORS (Score 0-100 each)
+1. **Positioning** - Visibility, featured status, discoverability for THIS demographic
+2. **Pricing** - Value perception and affordability for THIS income level
+3. **Social Proof** - Reviews, ratings, testimonials relevant to THIS demographic
+4. **Trust Signals** - Company reputation, guarantees, certifications that resonate with THIS audience
+5. **Marketing Elements** - Advertising approach effectiveness for THIS demographic
+6. **Authority Signals** - Awards, partnerships, endorsements that matter to THIS demographic
+
+### THREE-TIER PURCHASE INTENT ANCHORS
+Based on the research paper's methodology, classify purchase intent into one of three anchors:
+
+🔴 **LOW ANCHOR (0-33%)**: "This demographic is UNLIKELY to purchase"
+- Characteristics: Poor fit, major barriers, misaligned value proposition
+- Customer would likely say: "No, I would not buy this"
+
+🟡 **MIDDLE ANCHOR (34-66%)**: "This demographic is UNCERTAIN or INDIFFERENT"
+- Characteristics: Some appeal but significant reservations, mixed signals
+- Customer would likely say: "Maybe, I'm not sure" or "I need more information"
+
+🟢 **HIGH ANCHOR (67-100%)**: "This demographic has STRONG PURCHASE INTENT"
+- Characteristics: Strong fit, clear value, minimal barriers
+- Customer would likely say: "Yes, I would likely buy this" or "I'm very interested"
+
+**IMPORTANT**: Your anchor classification should heavily weight demographic fit!
+
+## Required JSON Response Structure:
+{
+  "url": "${productUrl}",
+  "overallScore": 75,
+  "buyingIntentProbability": 68,
+  "purchaseIntentAnchor": "middle",  // Must be: "low", "middle", or "high"
+  "targetDemographics": {
+    "ageRange": "${demographics.ageRange}",
+    "gender": "${demographics.gender}",
+    "incomeTier": "${demographics.incomeTier}",
+    "region": "${demographics.region}"${demographics.ethnicity ? `,\n    "ethnicity": "${demographics.ethnicity}"` : ''}
+  },
+  "productAttributes": {
+    "category": "Electronics",  // Identify the product category
+    "priceTier": "medium",      // low, medium, high, or premium
+    "conceptSource": "Established Brand"  // Type of seller/brand
+  },
+  "factors": [
+    {
+      "name": "Positioning",
+      "score": 80,
+      "weight": 0.15,
+      "description": "How this factor affects THIS demographic specifically",
+      "impact": "positive"
+    },
+    // ... all 6 factors (Positioning, Pricing, Social Proof, Trust Signals, Marketing Elements, Authority Signals)
+  ],
+  "analysis": "Overall evaluation paragraph explaining product-demographic fit",
+  "demographicImpact": "Detailed analysis of how EACH demographic factor (age, gender, income, region) specifically influences purchase intent for this product. Explain WHY this demographic would or wouldn't buy.",
+  "recommendations": [
+    "Recommendation 1 tailored to improve conversion for THIS demographic",
+    "Recommendation 2...",
+    // 3-5 total recommendations
+  ],
+  "timestamp": "${new Date().toISOString()}"
+}
+
+**CRITICAL INSTRUCTIONS:**
+1. The purchaseIntentAnchor MUST match the buyingIntentProbability: 0-33% = "low", 34-66% = "middle", 67-100% = "high"
+2. The demographicImpact field is REQUIRED and must explain how EACH demographic factor affects purchase intent
+3. All factor descriptions must be specific to the target demographic
+4. Recommendations must be tailored to improve appeal for this specific demographic
+
+---
+
+## ACTUAL WEBSITE DATA (Scraped from Live Site)
+
+${!scrapedData.error ? `
+**Product Information:**
+- Product Name: ${productInfo.productName}
+- Price: ${productInfo.price}
+- Rating: ${productInfo.rating}
+- Reviews: ${productInfo.reviewCount}
+- Description: ${productInfo.description}
+
+**Key Features:**
+${productInfo.keyFeatures.length > 0 ? productInfo.keyFeatures.map((f) => `- ${f}`).join("\n") : "- No key features extracted"}
+
+**Social Proof (Factor 3: Reviews, ratings, testimonials):**
+${scrapedData.socialProof?.starRating ? `- Star Rating: ${scrapedData.socialProof.starRating}/5 (Sentiment: ${scrapedData.socialProof.reviewSentiment})` : "- Star Rating: Not found"}
+${scrapedData.socialProof?.userCount ? `- User Count: ${scrapedData.socialProof.userCount}` : ""}
+${scrapedData.socialProof?.testimonials && scrapedData.socialProof.testimonials.length > 0 ? `- Customer Testimonials Found: ${scrapedData.socialProof.testimonials.length}\n  Sample: "${scrapedData.socialProof.testimonials[0].substring(0, 150)}..."` : "- No testimonials found"}
+${scrapedData.socialProof?.verifiedBadges && scrapedData.socialProof.verifiedBadges.length > 0 ? `- Verified Badges: ${scrapedData.socialProof.verifiedBadges.join(", ")}` : ""}
+
+**Trust Signals (Factor 4: Security, guarantees, certifications):**
+${scrapedData.trustSignals?.securityBadges && scrapedData.trustSignals.securityBadges.length > 0 ? `- Security Badges: ${scrapedData.trustSignals.securityBadges.join(", ")}` : "- No security badges found"}
+${scrapedData.trustSignals?.guarantees && scrapedData.trustSignals.guarantees.length > 0 ? `- Guarantees/Warranties: ${scrapedData.trustSignals.guarantees.slice(0, 3).join("; ")}` : "- No guarantees found"}
+${scrapedData.trustSignals?.returnPolicy ? `- Return Policy: ${scrapedData.trustSignals.returnPolicy}` : "- Return policy not clearly stated"}
+${scrapedData.trustSignals?.paymentMethods && scrapedData.trustSignals.paymentMethods.length > 0 ? `- Payment Methods: ${scrapedData.trustSignals.paymentMethods.join(", ")}` : ""}
+${scrapedData.trustSignals?.certifications && scrapedData.trustSignals.certifications.length > 0 ? `- Certifications: ${scrapedData.trustSignals.certifications.join(", ")}` : ""}
+
+**Authority Signals (Factor 6: Awards, partnerships, endorsements):**
+${scrapedData.authoritySignals?.awards && scrapedData.authoritySignals.awards.length > 0 ? `- Awards: ${scrapedData.authoritySignals.awards.slice(0, 3).join(", ")}` : "- No awards found"}
+${scrapedData.authoritySignals?.asSeenOn && scrapedData.authoritySignals.asSeenOn.length > 0 ? `- Featured In: ${scrapedData.authoritySignals.asSeenOn.slice(0, 5).join(", ")}` : "- No media mentions found"}
+${scrapedData.authoritySignals?.partnerships && scrapedData.authoritySignals.partnerships.length > 0 ? `- Partnerships/Integrations: ${scrapedData.authoritySignals.partnerships.slice(0, 3).join(", ")}` : ""}
+${scrapedData.authoritySignals?.expertEndorsements && scrapedData.authoritySignals.expertEndorsements.length > 0 ? `- Expert Endorsements: Found ${scrapedData.authoritySignals.expertEndorsements.length}` : ""}
+
+**Marketing Elements (Factor 5: Advertising approach, CTAs, urgency):**
+${scrapedData.marketingElements?.ctas && scrapedData.marketingElements.ctas.length > 0 ? `- Call-to-Actions: ${scrapedData.marketingElements.ctas.slice(0, 5).map(cta => `"${cta.text}" (${cta.type})`).join(", ")}` : "- No clear CTAs found"}
+${scrapedData.marketingElements?.urgencyMessages && scrapedData.marketingElements.urgencyMessages.length > 0 ? `- Urgency/Scarcity Messages: ${scrapedData.marketingElements.urgencyMessages.slice(0, 3).join("; ")}` : "- No urgency messaging detected"}
+${scrapedData.marketingElements?.discounts && scrapedData.marketingElements.discounts.length > 0 ? `- Discounts/Promotions: ${scrapedData.marketingElements.discounts.slice(0, 3).join(", ")}` : ""}
+${scrapedData.marketingElements?.countdowns ? "- ⚠️ Countdown Timer Detected (can create pressure)" : ""}
+${scrapedData.marketingElements?.popups ? "- ⚠️ Popup/Modal Detected (can be intrusive)" : ""}
+
+**Page Content (first 5000 chars):**
+${scrapedData.visibleText.substring(0, 5000)}
+
+**Screenshot captured:** Yes, available for visual analysis in the dashboard
+
+⚠️ **IMPORTANT:** Use THIS ACTUAL DATA above to inform your evaluation. DO NOT rely on pre-trained knowledge about the brand. Evaluate based on what you see in the scraped content. The data is organized by the 6 evaluation factors to help you score each dimension accurately.
+` : `
+⚠️ Website scraping failed. Error: ${scrapedData.error}
+Falling back to generic evaluation based on domain knowledge.
+`}
+`;
+
+    const message = await anthropic.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      max_tokens: 3000, // Increased from 2000 to prevent truncation
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+    });
+
+    const responseText = message.content[0].type === "text" ? message.content[0].text : "";
+
+    // Extract and parse JSON with error recovery
+    const evaluation: ProductEvaluation = cleanAndParseJSON(responseText);
+
+    // ========== SSR METHODOLOGY (Paper 2) ==========
+    // Generate textual analysis for SSR calculation
+    try {
+      const ssrPrompt = `Based on the research paper "LLMs Reproduce Human Purchase Intent via Semantic Similarity Elicitation of Likert Ratings" (arXiv:2510.08338v1), provide a natural, detailed textual response about purchase intent for this product.
+
+**PRODUCT:** ${productUrl}
+
+**TARGET CUSTOMER:**
+${demographicDescription}
+
+**YOUR TASK:** Write a 2-3 paragraph textual response explaining how likely this specific demographic is to purchase this product. Write as if you ARE a person from this demographic sharing your honest thoughts about buying this product.
+
+Consider:
+- How well the product fits this demographic's needs and lifestyle
+- Price affordability relative to this income level
+- Whether the product appeals to this age group and gender
+- Regional and cultural factors that might influence the decision
+- Trust, brand perception, and social proof relevant to this demographic
+
+Write naturally and conversationally. Be specific about WHY you would or wouldn't buy it. Don't use a rating scale - just explain your thoughts and feelings about purchasing this product.`;
+
+      const ssrMessage = await anthropic.messages.create({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "user",
+            content: ssrPrompt,
+          },
+        ],
+      });
+
+      const textualAnalysis = ssrMessage.content[0].type === "text" ? ssrMessage.content[0].text : "";
+
+      // Calculate SSR score using embeddings and cosine similarity (using transformers.js - no API key needed!)
+      if (textualAnalysis) {
+        const ssrResults = await calculateSSR(textualAnalysis);
+
+        // Compare methodologies
+        const comparison = compareMethodologies(evaluation.overallScore, ssrResults.ssrScore);
+
+        // Add SSR data to evaluation
+        evaluation.ssrScore = ssrResults.ssrScore;
+        evaluation.ssrConfidence = ssrResults.ssrConfidence;
+        evaluation.ssrMarginConfidence = ssrResults.marginConfidence;
+        evaluation.ssrDistribution = ssrResults.ssrDistribution;
+        evaluation.textualAnalysis = textualAnalysis;
+        evaluation.methodologyComparison = {
+          agreement: comparison.agreement,
+          factorScore: evaluation.overallScore,
+          ssrScore: ssrResults.ssrScore,
+          confidenceLevel: comparison.confidenceLevel,
+          explanation: comparison.explanation,
+        };
+
+        // Update the overall scores based on SSR (which has 90% correlation with humans)
+        // SSR is primary, factor score is secondary validation
+        evaluation.buyingIntentProbability = ssrResults.ssrScore;
+        evaluation.purchaseIntentAnchor = getAnchorFromSSRScore(ssrResults.ssrScore);
+
+        console.log("SSR Analysis completed:", {
+          factorScore: evaluation.overallScore,
+          ssrScore: ssrResults.ssrScore,
+          agreement: comparison.agreement,
+        });
+      }
+    } catch (ssrError) {
+      console.error("SSR calculation failed, using factor-based scores only:", ssrError);
+      // If SSR fails, keep the original factor-based scores
+    }
+
+    // ========== AGENT EXPERIENCE (AX) EVALUATION ==========
+    // Evaluate how agent-friendly the website is (ANPS methodology)
+    try {
+      const axPrompt = createAXEvaluationPrompt(productUrl);
+
+      const axMessage = await anthropic.messages.create({
+        model: "claude-sonnet-4-5-20250929",
+        max_tokens: 1500,
+        messages: [
+          {
+            role: "user",
+            content: axPrompt,
+          },
+        ],
+      });
+
+      const axResponseText = axMessage.content[0].type === "text" ? axMessage.content[0].text : "";
+
+      // Parse AX evaluation
+      const agentExperience = parseAgentExperience(axResponseText);
+
+      if (agentExperience) {
+        evaluation.agentExperience = agentExperience;
+
+        console.log("AX Analysis completed:", {
+          axScore: agentExperience.axScore,
+          anps: agentExperience.anps,
+          factorCount: agentExperience.factors.length,
+        });
+      }
+    } catch (axError) {
+      console.error("AX evaluation failed:", axError);
+      // Continue without AX data
+    }
+
+    // ========== SECTION-SPECIFIC RECOMMENDATIONS ==========
+    // Generate detailed section-by-section breakdown with targeted recommendations
+    try {
+      if (!scrapedData.error && scrapedData.sectionScreenshots) {
+        console.log("📋 Generating section-specific recommendations...");
+
+        const sectionPrompt = `Based on your evaluation of ${productUrl} for the target demographic (${demographics.ageRange}, ${demographics.gender}, ${demographics.incomeTier} income), provide a detailed section-by-section breakdown of recommendations.
+
+**YOUR TASK:** For each major section of the website, analyze what's working and what needs improvement. Focus on actionable, specific recommendations.
+
+**EVALUATION FACTORS TO CONSIDER:**
+1. **Positioning** (Score: ${evaluation.factors[0]?.score || 'N/A'}/100)
+2. **Pricing** (Score: ${evaluation.factors[1]?.score || 'N/A'}/100)
+3. **Social Proof** (Score: ${evaluation.factors[2]?.score || 'N/A'}/100)
+4. **Trust Signals** (Score: ${evaluation.factors[3]?.score || 'N/A'}/100)
+5. **Marketing Elements** (Score: ${evaluation.factors[4]?.score || 'N/A'}/100)
+6. **Authority Signals** (Score: ${evaluation.factors[5]?.score || 'N/A'}/100)
+
+**SCRAPED DATA SUMMARY:**
+- Pricing: ${productInfo.price}
+- Social Proof: ${scrapedData.socialProof?.starRating ? `${scrapedData.socialProof.starRating}/5 stars` : 'No rating'}, ${scrapedData.socialProof?.userCount || 'No user count'}
+- Trust Signals: ${scrapedData.trustSignals?.guarantees?.length || 0} guarantees found, ${scrapedData.trustSignals?.securityBadges?.length || 0} security badges
+- Marketing: ${scrapedData.marketingElements?.ctas?.length || 0} CTAs, ${scrapedData.marketingElements?.urgencyMessages?.length || 0} urgency messages
+- Authority: ${scrapedData.authoritySignals?.awards?.length || 0} awards, ${scrapedData.authoritySignals?.asSeenOn?.length || 0} media mentions
+
+**REQUIRED JSON RESPONSE:**
+Return an array of section recommendations. Each section should include:
+- section: The section name - **MUST use EXACTLY ONE of these names:**
+  * "Pricing" (not "Price", "Pricing Section", or any variation)
+  * "Social Proof" (not "Reviews", "Testimonials", or any variation)
+  * "Trust Signals" (not "Trust", "Security", or any variation)
+  * "Marketing Elements" (not "CTAs", "Call to Action", or any variation)
+  * "Features" (not "Product Features", "Key Features", or any variation)
+- score: The relevant factor score for that section (0-100)
+- issues: Array of 2-4 specific problems found in this section
+- recommendations: Array of 2-4 actionable improvements for this section
+- impact: Priority level ("high", "medium", or "low")
+
+**CRITICAL - SECTION NAMING:**
+⚠️ The "section" field MUST use the EXACT names listed above. Do not use variations or abbreviations. This is required for screenshot mapping.
+
+**IMPORTANT GUIDELINES:**
+- Be specific and actionable (not generic advice)
+- Focus on the target demographic's needs
+- Prioritize high-impact changes
+- Reference actual data from the scraped website
+- Only include sections that are relevant and have actionable feedback
+
+Example format:
+[
+  {
+    "section": "Pricing",
+    "score": 68,
+    "issues": [
+      "Price is buried below the fold and not immediately visible",
+      "No comparison with competitors to justify the cost",
+      "Lacks pricing tiers for different budgets"
+    ],
+    "recommendations": [
+      "Move pricing information above the fold in the hero section",
+      "Add a comparison table showing value vs. competitors",
+      "Introduce tiered pricing options (Basic, Pro, Enterprise) to appeal to different income levels"
+    ],
+    "impact": "high"
+  },
+  {
+    "section": "Social Proof",
+    "score": 85,
+    "issues": [
+      "Testimonials lack demographic diversity",
+      "No video testimonials to increase authenticity"
+    ],
+    "recommendations": [
+      "Add testimonials from customers matching the target demographic (${demographics.ageRange}, ${demographics.gender})",
+      "Include 2-3 short video testimonials for higher trust",
+      "Display real-time user activity or purchase notifications"
+    ],
+    "impact": "medium"
+  }
+]
+
+Provide 4-6 section recommendations focusing on the most impactful improvements for this specific demographic.`;
+
+        const sectionMessage = await anthropic.messages.create({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 3000, // Increased from 2000 to prevent truncation
+          messages: [
+            {
+              role: "user",
+              content: sectionPrompt,
+            },
+          ],
+        });
+
+        const sectionResponseText = sectionMessage.content[0].type === "text" ? sectionMessage.content[0].text : "";
+
+        // Parse JSON response
+        const sectionJsonMatch = sectionResponseText.match(/\[[\s\S]*\]/);
+        if (sectionJsonMatch) {
+          const sectionedRecommendations = JSON.parse(sectionJsonMatch[0]);
+
+          // Map section names to screenshot paths
+          const sectionNameMapping: Record<string, keyof typeof scrapedData.sectionScreenshots> = {
+            "Pricing": "pricing",
+            "Social Proof": "socialProof",
+            "Trust Signals": "trustSignals",
+            "Marketing Elements": "marketing",
+            "Features": "features",
+            "Hero Section": "hero",
+          };
+
+          // Attach screenshot paths to each section
+          for (const section of sectionedRecommendations) {
+            const screenshotKey = sectionNameMapping[section.section];
+            if (screenshotKey && scrapedData.sectionScreenshots[screenshotKey]) {
+              section.screenshotPath = scrapedData.sectionScreenshots[screenshotKey];
+              section.isFallbackScreenshot = false;
+            } else {
+              // Use hero screenshot as fallback if specific section screenshot not available
+              section.screenshotPath = scrapedData.heroScreenshotPath || scrapedData.screenshotPath;
+              section.isFallbackScreenshot = true;
+              console.log(`  ⚠️  ${section.section}: Using fallback screenshot (hero/full page)`);
+            }
+          }
+
+          evaluation.sectionedRecommendations = sectionedRecommendations;
+          console.log(`✅ Generated ${sectionedRecommendations.length} section recommendations`);
+        }
+      }
+    } catch (sectionError) {
+      console.error("Section recommendations generation failed:", sectionError);
+      // Continue without section recommendations
+    }
+
+    // Add website snapshot data to evaluation
+    if (!scrapedData.error) {
+      evaluation.websiteSnapshot = {
+        screenshotPath: scrapedData.screenshotPath,
+        heroScreenshotPath: scrapedData.heroScreenshotPath,
+        sectionScreenshots: scrapedData.sectionScreenshots,
+        productName: productInfo.productName,
+        price: productInfo.price,
+        rating: productInfo.rating,
+        reviewCount: productInfo.reviewCount,
+        description: productInfo.description,
+        keyFeatures: productInfo.keyFeatures,
+      };
+    }
+
+    // Save evaluation to database with user association
+    try {
+      // Get current user (if logged in)
+      const user = await stackServerApp.getUser();
+      const userId = user?.id || null;
+
+      const evaluationId = await saveEvaluation(evaluation, userId);
+      console.log(`Evaluation saved to database with ID: ${evaluationId}${userId ? ` for user: ${userId}` : ' (anonymous)'}`);
+    } catch (dbError) {
+      console.error("Failed to save evaluation to database:", dbError);
+      // Don't fail the request if database save fails
+    }
+
+    return NextResponse.json(evaluation);
+  } catch (error) {
+    console.error("Evaluation error:", error);
+
+    // Return a mock evaluation if API fails
+    const body = await request.json().catch(() => ({ demographics: {} }));
+    const mockDemographics = body.demographics || {
+      ageRange: "25-34",
+      gender: "all",
+      incomeTier: "medium",
+      region: "north-america"
+    };
+
+    const mockEvaluation: ProductEvaluation = {
+      url: body.productUrl || request.url,
+      overallScore: 72,
+      buyingIntentProbability: 65,
+      purchaseIntentAnchor: "middle",
+      targetDemographics: mockDemographics,
+      productAttributes: {
+        category: "General Product/Service",
+        priceTier: "medium",
+        conceptSource: "Unknown - Using Mock Data"
+      },
+      factors: [
+        {
+          name: "Positioning",
+          score: 75,
+          weight: 0.15,
+          description: "Product/service is well-positioned with clear value proposition and strong visibility in its market segment.",
+          impact: "positive",
+        },
+        {
+          name: "Pricing",
+          score: 68,
+          weight: 0.25,
+          description: "Competitive pricing strategy with clear tiers or options. Value is communicated but could be more compelling.",
+          impact: "neutral",
+        },
+        {
+          name: "Social Proof",
+          score: 85,
+          weight: 0.20,
+          description: "Strong social proof through reviews, testimonials, user counts, or case studies. Builds trust effectively.",
+          impact: "positive",
+        },
+        {
+          name: "Trust Signals",
+          score: 78,
+          weight: 0.15,
+          description: "Good trust indicators including guarantees, security badges, or company credentials. Room for improvement.",
+          impact: "positive",
+        },
+        {
+          name: "Marketing Elements",
+          score: 45,
+          weight: 0.10,
+          description: "Some promotional elements may reduce perceived authenticity. Balance needed between marketing and organic appeal.",
+          impact: "negative",
+        },
+        {
+          name: "Authority Signals",
+          score: 82,
+          weight: 0.15,
+          description: "Strong authority through partnerships, awards, notable clients, or industry recognition.",
+          impact: "positive",
+        },
+      ],
+      analysis: "This product/service demonstrates strong overall appeal with particular strengths in social proof and authority signals. The positioning effectively communicates value, though pricing strategy could be optimized. Trust signals are solid but could be enhanced. Marketing elements should be balanced to maintain authenticity. The combination of factors suggests good conversion potential with room for strategic improvements in key areas.",
+      demographicImpact: `Based on the target demographic (${mockDemographics.ageRange} years, ${mockDemographics.gender}, ${mockDemographics.incomeTier} income, ${mockDemographics.region}), this product shows MODERATE appeal. Age and income factors suggest decent affordability and relevance. Regional preferences align reasonably well with the product offering. Gender considerations indicate neutral to positive reception. Overall demographic fit places this in the MIDDLE ANCHOR range - the target customer is uncertain but could be convinced with proper messaging and value demonstration.`,
+      recommendations: [
+        "Enhance pricing transparency and add comparison tables to clearly demonstrate value against competitors",
+        "Reduce reliance on aggressive marketing tactics and focus on authentic user testimonials and case studies",
+        "Add more specific trust signals like security certifications, guarantees, or third-party validations",
+        "Improve product/service positioning by highlighting unique differentiators and key benefits more prominently",
+        "Leverage existing authority signals more effectively in marketing materials and landing pages",
+      ],
+      timestamp: new Date().toISOString(),
+    };
+
+    return NextResponse.json(mockEvaluation);
+  }
+}

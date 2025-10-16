@@ -36,6 +36,18 @@ yarn-error.log*
 # vercel
 .vercel
 
+# netlify
+.netlify
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# screenshots (generated at runtime)
+/public/screenshots/*.png
+/public/screenshots/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
