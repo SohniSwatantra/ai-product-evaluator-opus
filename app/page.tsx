@@ -11,13 +11,11 @@ import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { type ProductEvaluation } from "@/types";
 import { Brain, Target, TrendingUp, Sparkles, BarChart3, Shield, TrendingDown, Minus } from "lucide-react";
-import Image from "next/image";
 
 export default function Home() {
   const [evaluation, setEvaluation] = useState<ProductEvaluation | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string>("");
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Poll for job status
@@ -43,16 +41,12 @@ export default function Home() {
         } else if (data.status === "failed") {
           // Job failed
           console.error("Evaluation failed:", data.error);
-          setStatusMessage(`Error: ${data.error || "Unknown error occurred"}`);
           setIsAnalyzing(false);
           setJobId(null);
 
           if (pollingInterval.current) {
             clearInterval(pollingInterval.current);
           }
-        } else {
-          // Still processing
-          setStatusMessage(getStatusMessage(data.status));
         }
       } catch (error) {
         console.error("Polling error:", error);
@@ -73,20 +67,8 @@ export default function Home() {
     };
   }, [jobId, isAnalyzing]);
 
-  const getStatusMessage = (status: string): string => {
-    switch (status) {
-      case "pending":
-        return "Queuing evaluation...";
-      case "processing":
-        return "Analyzing product with AI (this may take 30-60 seconds)...";
-      default:
-        return "Processing...";
-    }
-  };
-
   const handleAnalyze = async (url: string, demographics: import("@/types").Demographics) => {
     setIsAnalyzing(true);
-    setStatusMessage("Starting evaluation...");
 
     try {
       const response = await fetch("/api/evaluate", {
@@ -106,7 +88,6 @@ export default function Home() {
       if (data.jobId) {
         // Async mode - start polling
         setJobId(data.jobId);
-        setStatusMessage(data.message || "Evaluation started...");
       } else {
         // Sync mode fallback (shouldn't happen in production)
         setEvaluation(data);
@@ -114,7 +95,6 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Analysis failed:", error);
-      setStatusMessage("Failed to start evaluation. Please try again.");
       setIsAnalyzing(false);
     }
   };

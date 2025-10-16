@@ -13,7 +13,11 @@ export async function GET(request: Request) {
 
     const evaluations = await getAllEvaluations(limit);
 
-    const response: any = {
+    const response: {
+      evaluations: unknown[];
+      count: number;
+      stats?: unknown;
+    } = {
       evaluations,
       count: evaluations.length,
     };
