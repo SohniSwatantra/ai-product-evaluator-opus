@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:worker": "node -e \"const fs=require('fs');const path=require('path');const dir=path.join('dist','worker');if(fs.existsSync(dir)){fs.rmSync(dir,{recursive:true,force:true});}\" && tsc -p tsconfig.worker.json && node -e \"const fs=require('fs');const path=require('path');const src=path.join('dist','worker','scripts','evaluate-product.js');const dest=path.join('dist','worker','scripts','evaluate-product.mjs');if(fs.existsSync(src)){fs.renameSync(src,dest);}\"",
-    "worker:run": "node dist/worker/scripts/evaluate-product.mjs"
+    "build:worker": "node -e \"const fs=require('fs');const path=require('path');const dir=path.join('dist','worker');if(fs.existsSync(dir)){fs.rmSync(dir,{recursive:true,force:true});}\" && tsc -p tsconfig.worker.json",
+    "worker:run": "node dist/worker/scripts/evaluate-product.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
