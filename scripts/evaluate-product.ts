@@ -14,6 +14,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { neon } from "@neondatabase/serverless";
 import { existsSync } from "fs";
+import path from "path";
 import { readFile, unlink } from "fs/promises";
 
 import { calculateSSR, compareMethodologies, getAnchorFromSSRScore } from "../lib/ssr-calculator";
@@ -203,6 +204,25 @@ async function removeLocalFile(maybePath: string | null | undefined) {
   } catch {
     // Ignore – the file may already have been removed.
   }
+}
+
+function resolveScreenshotPath(localPath: string | undefined | null): string | null {
+  if (!localPath) {
+    return null;
+  }
+
+  if (path.isAbsolute(localPath)) {
+    return localPath;
+  }
+
+  const sanitized = localPath.replace(/^\/+/, "");
+  const withPublic = path.join(process.cwd(), "public", sanitized);
+  if (existsSync(withPublic)) {
+    return withPublic;
+  }
+
+  const direct = path.join(process.cwd(), sanitized);
+  return existsSync(direct) ? direct : withPublic;
 }
 
 // ---------------------------------------------------------------------------
@@ -723,14 +743,14 @@ async function pushScreenshotsToR2(
   }
 
   for (const [index, item] of screenshotUploads.entries()) {
-    const localPath = item.localPath;
-    if (!localPath || !existsSync(localPath)) continue;
+    const resolvedPath = resolveScreenshotPath(item.localPath);
+    if (!resolvedPath || !existsSync(resolvedPath)) continue;
 
     const key = `${baseKey}/screenshot-${index}.png`;
-    const uploaded = await uploadToR2(localPath, key);
+    const uploaded = await uploadToR2(resolvedPath, key);
     if (uploaded) {
       item.assign(uploaded);
-      await removeLocalFile(localPath);
+      await removeLocalFile(resolvedPath);
     }
   }
 }
