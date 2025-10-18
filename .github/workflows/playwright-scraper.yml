@@ -25,6 +25,9 @@ jobs:
         - name: Install Playwright Browsers
           run: npx playwright install --with-deps chromium
 
+        - name: Build Worker Bundle
+          run: npm run build:worker
+
         - name: Run Product Evaluation
           env:
             DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -36,7 +39,7 @@ jobs:
             PRODUCT_URL: ${{ github.event.client_payload.productUrl }}
             DEMOGRAPHICS: ${{ github.event.client_payload.demographics }}
             JOB_ID: ${{ github.event.client_payload.jobId }}
-          run: node scripts/evaluate-product.mjs
+          run: node dist/worker/scripts/evaluate-product.mjs
 
         - name: Upload screenshots as artifacts (backup)
           if: always()
