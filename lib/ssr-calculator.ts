@@ -11,20 +11,24 @@
  * 5. Calculate mean purchase intent
  */
 
-import { pipeline, type FeatureExtractionPipeline } from "@xenova/transformers";
 import { REFERENCE_ANCHORS, getAllAnchorStatements } from "./reference-anchors";
 import type { SSRDistribution } from "@/types";
 
+type FeatureExtractionPipeline = import("@xenova/transformers").FeatureExtractionPipeline;
+
 // Singleton pattern: Cache the model pipeline to avoid reloading
-let embedder: FeatureExtractionPipeline | null = null;
+let embedderPromise: Promise<FeatureExtractionPipeline> | null = null;
 
 async function getEmbedder(): Promise<FeatureExtractionPipeline> {
-  if (!embedder) {
-    // Using Xenova/all-MiniLM-L6-v2 - lightweight, fast, and effective for semantic similarity
-    // Model is ~25MB and will be downloaded/cached on first run
-    embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  if (!embedderPromise) {
+    embedderPromise = (async () => {
+      // Using Xenova/all-MiniLM-L6-v2 - lightweight, fast, and effective for semantic similarity
+      // Model is ~25MB and will be downloaded/cached on first run
+      const { pipeline } = await import("@xenova/transformers");
+      return pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+    })();
   }
-  return embedder;
+  return embedderPromise;
 }
 
 /**
