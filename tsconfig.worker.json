@@ -2,9 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist/worker",
-    "module": "NodeNext",
+    "module": "CommonJS",
     "target": "ES2022",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
