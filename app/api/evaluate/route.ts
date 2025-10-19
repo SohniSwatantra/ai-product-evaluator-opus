@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createEvaluationJob } from "@/lib/db";
-import { triggerScrapeJob } from "@/lib/github-actions";
 import { stackServerApp } from "@/stack/server";
 import { randomUUID } from "crypto";
+import type { Demographics } from "@/types";
 
 /**
  * Async Evaluate API Route
@@ -54,14 +54,14 @@ export async function POST(request: Request) {
     // Create job in database
     await createEvaluationJob(jobId, normalizedUrl, demographics, userId);
 
-    // Trigger GitHub Actions workflow
-    await triggerScrapeJob({
+    // Enqueue Netlify async workload
+    await enqueueEvaluationWorkload({
       productUrl: normalizedUrl,
       demographics,
       jobId,
     });
 
-    console.log(`✅ Job ${jobId} created and GitHub Actions triggered`);
+    console.log(`✅ Job ${jobId} queued for Netlify async processing`);
 
     // Return job ID immediately (frontend will poll for results)
     return NextResponse.json({
@@ -80,5 +80,29 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  }
+}
+
+
+async function enqueueEvaluationWorkload(payload: { productUrl: string; demographics: Demographics; jobId: string }) {
+  const enqueueUrl = process.env.NETLIFY_WORKLOAD_ENQUEUE_URL;
+  const enqueueToken = process.env.NETLIFY_WORKLOAD_TOKEN;
+
+  if (!enqueueUrl) {
+    throw new Error("NETLIFY_WORKLOAD_ENQUEUE_URL is not configured. Set it to your Netlify async workload enqueue endpoint.");
+  }
+
+  const response = await fetch(`${enqueueUrl.replace(/\/$/, "")}/product-evaluation`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(enqueueToken ? { Authorization: `Bearer ${enqueueToken}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to enqueue Netlify workload: ${response.status} ${response.statusText} - ${errorText}`);
   }
 }

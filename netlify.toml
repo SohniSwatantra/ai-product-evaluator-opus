@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npx playwright install --with-deps chromium && npm run build"
   publish = ".next"
 
 [[plugins]]
@@ -17,3 +17,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+[queues."product-evaluation"]
+  worker = "evaluate-product"
+  max_concurrency = 1
