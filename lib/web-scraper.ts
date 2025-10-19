@@ -82,8 +82,18 @@ export interface ScraperOptions {
   fullPage?: boolean;
   viewportWidth?: number;
   viewportHeight?: number;
+  outputDir?: string;
+  publicBasePath?: string;
 }
 
+
+function formatPublicPath(base: string, filename: string): string {
+  if (base.startsWith("/")) {
+    const normalized = base.endsWith("/") ? base.slice(0, -1) : base;
+    return `${normalized}/${filename}`;
+  }
+  return join(base, filename);
+}
 /**
  * Capture screenshot of a specific element/section on the page
  */
@@ -92,6 +102,7 @@ async function captureElementScreenshot(
   selectors: string[],
   filename: string,
   screenshotsDir: string,
+  publicBasePath: string,
   sectionName?: string
 ): Promise<string | undefined> {
   try {
@@ -126,7 +137,7 @@ async function captureElementScreenshot(
             await writeFile(filepath, screenshotBuffer);
 
             console.log(`  ✅ ${sectionName || 'Section'}: Captured using selector "${selector}"`);
-            return `/screenshots/${filename}`;
+            return formatPublicPath(publicBasePath, filename);
           }
         }
       } catch (err) {
@@ -161,6 +172,8 @@ export async function scrapeWebsite(
     fullPage = true,
     viewportWidth = 1920,
     viewportHeight = 1080,
+    outputDir,
+    publicBasePath,
   } = options;
 
   let browser: Browser | null = null;
@@ -560,10 +573,11 @@ export async function scrapeWebsite(
     const limitedHtml = html.substring(0, 50000);
 
     // Create screenshots directory
-    const screenshotsDir = join(process.cwd(), "public", "screenshots");
+    const screenshotsDir = outputDir ?? join(process.cwd(), "public", "screenshots");
     if (!existsSync(screenshotsDir)) {
       await mkdir(screenshotsDir, { recursive: true });
     }
+    const publicBase = publicBasePath ?? "/screenshots";
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -598,7 +612,7 @@ export async function scrapeWebsite(
     const sectionScreenshots: SectionScreenshotData = {};
 
     // Hero section (already captured above)
-    sectionScreenshots.hero = `/screenshots/${heroFilename}`;
+    sectionScreenshots.hero = formatPublicPath(publicBase, heroFilename);
 
     // Pricing section - Reliable selectors (NO text-matching)
     const pricingSectionPath = await captureElementScreenshot(
@@ -619,6 +633,7 @@ export async function scrapeWebsite(
       ],
       `${sanitizedUrl}-${timestamp}-pricing.png`,
       screenshotsDir,
+      publicBase,
       "Pricing"
     );
     if (pricingSectionPath) sectionScreenshots.pricing = pricingSectionPath;
@@ -643,6 +658,7 @@ export async function scrapeWebsite(
       ],
       `${sanitizedUrl}-${timestamp}-social-proof.png`,
       screenshotsDir,
+      publicBase,
       "Social Proof"
     );
     if (socialProofSectionPath) sectionScreenshots.socialProof = socialProofSectionPath;
@@ -664,6 +680,7 @@ export async function scrapeWebsite(
       ],
       `${sanitizedUrl}-${timestamp}-trust-signals.png`,
       screenshotsDir,
+      publicBase,
       "Trust Signals"
     );
     if (trustSignalsSectionPath) sectionScreenshots.trustSignals = trustSignalsSectionPath;
@@ -685,6 +702,7 @@ export async function scrapeWebsite(
       ],
       `${sanitizedUrl}-${timestamp}-marketing.png`,
       screenshotsDir,
+      publicBase,
       "Marketing Elements"
     );
     if (marketingSectionPath) sectionScreenshots.marketing = marketingSectionPath;
@@ -707,6 +725,7 @@ export async function scrapeWebsite(
       ],
       `${sanitizedUrl}-${timestamp}-features.png`,
       screenshotsDir,
+      publicBase,
       "Features"
     );
     if (featuresSectionPath) sectionScreenshots.features = featuresSectionPath;
@@ -741,9 +760,9 @@ export async function scrapeWebsite(
       description: pageData.description,
       visibleText: pageData.visibleText,
       html: limitedHtml,
-      screenshotPath: `/screenshots/${filename}`,
+      screenshotPath: formatPublicPath(publicBase, filename),
       screenshotBase64: `data:image/png;base64,${screenshotBase64}`,
-      heroScreenshotPath: `/screenshots/${heroFilename}`,
+      heroScreenshotPath: formatPublicPath(publicBase, heroFilename),
       heroScreenshotBase64: `data:image/png;base64,${heroScreenshotBase64}`,
       sectionScreenshots, // Include section-specific screenshots
       metadata: {

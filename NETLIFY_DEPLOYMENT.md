@@ -1,10 +1,22 @@
 # 🚀 Netlify Deployment Guide - AI Product Evaluator
 
-This guide will walk you through deploying your AI Product Evaluator to Netlify with GitHub Actions handling Playwright scraping.
+This guide walks through deploying the AI Product Evaluator to Netlify using **Netlify Async Workloads** for the heavy Playwright/LLM job. Legacy GitHub Actions notes are retained where helpful.
 
 ---
 
 ## 📋 Prerequisites
+## 🚀 Async Workloads Setup (Async Workloads)
+
+1. **Enable the queue** – In Netlify, enable Async Workloads for this site and create a workload named `product-evaluation` that maps to the new function `netlify/functions/evaluate-product.ts`.
+2. **Install Playwright at build time** – The build command now runs `npx playwright install --with-deps chromium && npm run build`; no extra action needed, but ensure the `Playwright` package is in your deploy image.
+3. **Expose the enqueue endpoint** – Create a [Netlify access token](https://app.netlify.com/user/applications#personal-access-tokens) that can enqueue jobs and set the following environment variables on Netlify (and locally if you want to enqueue from development):
+   - `NETLIFY_WORKLOAD_ENQUEUE_URL` – The base URL returned by the Async Workloads dashboard for the `product-evaluation` queue.
+   - `NETLIFY_WORKLOAD_TOKEN` – (Optional) Bearer token used to authorize enqueue calls.
+4. **Runtime credentials** – Keep the existing `DATABASE_URL`, `ANTHROPIC_API_KEY`, and Cloudflare R2 secrets in Netlify’s environment so the queue worker can persist evaluations and upload screenshots.
+5. **Optional local fallback** – If you want to enqueue jobs locally without Netlify, you can point `NETLIFY_WORKLOAD_ENQUEUE_URL` at a tunnel or staging site; otherwise the API route will throw until the variable is configured.
+
+> Legacy GitHub Actions instructions are preserved below for reference.
+
 
 - GitHub account
 - Netlify account
@@ -45,7 +57,9 @@ This creates the `evaluations` and `evaluation_jobs` tables.
 
 ---
 
-## 🐙 Step 3: Push Code to GitHub
+## 🐙 Step 3: Push Code to GitHub (recommended)
+
+_This step keeps your source on GitHub but is no longer tied to the evaluation workload._
 
 ### 3.1 Create GitHub Repository
 
@@ -77,7 +91,9 @@ git push -u origin main
 
 ---
 
-## 🔐 Step 4: Configure GitHub Secrets
+## 🔐 Step 4: Configure GitHub Secrets (legacy)
+
+_Only needed if you still run the GitHub Actions workflow. Safe to skip with Async Workloads._
 
 Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
 
@@ -130,15 +146,6 @@ Click **Add environment variables** and add:
 | `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` | Your Stack Auth Publishable Client Key     |
 | `STACK_SECRET_SERVER_KEY`                  | Your Stack Auth Secret Server Key          |
 
-### 5.4 Create GitHub Personal Access Token
-
-1. Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
-2. Click **Generate new token (classic)**
-3. Name: `Netlify CI/CD Token`
-4. Scopes: Check **repo** (all sub-scopes)
-5. Click **Generate token**
-6. Copy the token and add it to Netlify as `GITHUB_TOKEN`
-
 ### 5.5 Deploy
 
 Click **Deploy site**
@@ -187,11 +194,11 @@ User → Netlify App → Trigger GitHub Actions
 
 ## 🐛 Troubleshooting
 
-### Issue: GitHub Actions Not Triggering
+### Issue (legacy): GitHub Actions Not Triggering
 
 **Solution**: Check that `GITHUB_TOKEN` has **repo** scope and `GITHUB_REPO` is `owner/repo` format.
 
-### Issue: Playwright Fails in GitHub Actions
+### Issue (legacy): Playwright Fails in GitHub Actions
 
 **Solution**: Check GitHub Actions logs at `https://github.com/SohniSwatantra/ai-product-evaluator/actions`
 
@@ -208,14 +215,14 @@ User → Netlify App → Trigger GitHub Actions
 ## 📊 Monitoring
 
 - **Netlify Deploys**: https://app.netlify.com/sites/[your-site]/deploys
-- **GitHub Actions**: https://github.com/SohniSwatantra/ai-product-evaluator/actions
+- **GitHub Actions (legacy)**: https://github.com/SohniSwatantra/ai-product-evaluator/actions
 - **Neon Database**: https://console.neon.tech/
 
 ---
 
 ## 🎉 Success!
 
-Your AI Product Evaluator is now live on Netlify with Playwright running in GitHub Actions!
+Your AI Product Evaluator is now live on Netlify with Async Workloads running the evaluation queue!
 
 **Next Steps**:
 1. Add a custom domain in Netlify
@@ -229,7 +236,7 @@ Your AI Product Evaluator is now live on Netlify with Playwright running in GitH
 | Service          | Free Tier                | Expected Cost   |
 |------------------|--------------------------|-----------------|
 | Netlify          | 100GB bandwidth/month    | $0 (likely)     |
-| GitHub Actions   | 2000 minutes/month       | $0 (likely)     |
+| Netlify Async Workloads | Included in Netlify plans | See Netlify pricing |
 | Neon DB          | 512MB storage            | $0 (likely)     |
 | Cloudflare R2    | 10GB storage free        | $0 (likely)     |
 | Anthropic API    | Pay-as-you-go            | ~$0.01/eval     |
@@ -240,7 +247,7 @@ Your AI Product Evaluator is now live on Netlify with Playwright running in GitH
 
 ## 🚨 Important Notes
 
-1. **GitHub Actions runs on every evaluation** - No timeout limits!
+1. **Netlify Async Workloads run every evaluation** - Managed runtime, no external runner.
 2. **Screenshots are stored in R2** - Not in the repo
 3. **Database stores results** - Query from Netlify app
 4. **Async processing** - Results appear after Playwright finishes
@@ -264,13 +271,13 @@ Your AI Product Evaluator is now live on Netlify with Playwright running in GitH
 ## 📚 Additional Resources
 
 - [Netlify Docs](https://docs.netlify.com/)
-- [GitHub Actions Docs](https://docs.github.com/en/actions)
+- [Netlify Async Workloads](https://docs.netlify.com/functions/queues/)
 - [Playwright CI Guide](https://playwright.dev/docs/ci-intro)
 - [Neon Docs](https://neon.tech/docs/introduction)
 - [Cloudflare R2 Docs](https://developers.cloudflare.com/r2/)
 
 ---
 
-**Questions?** Check the GitHub Issues or Netlify support forums.
+**Questions?** Check the Netlify support forums or open a GitHub issue for the app.
 
 Happy deploying! 🚀
