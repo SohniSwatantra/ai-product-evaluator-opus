@@ -115,6 +115,33 @@ async function detectSectionsWithVision(
 
     console.log("🔍 Using Claude Vision to detect section coordinates...");
 
+    // Import sharp for image resizing
+    const sharp = require('sharp');
+
+    // Get image dimensions
+    const metadata = await sharp(screenshotBuffer).metadata();
+    const originalWidth = metadata.width || viewportWidth;
+    const originalHeight = metadata.height || viewportHeight;
+
+    // Resize if exceeds Vision API limits (8000px max dimension)
+    const MAX_DIMENSION = 8000;
+    let processedBuffer = screenshotBuffer;
+    let scaleFactor = 1;
+
+    if (originalWidth > MAX_DIMENSION || originalHeight > MAX_DIMENSION) {
+      // Calculate scale to fit within limits
+      scaleFactor = Math.min(MAX_DIMENSION / originalWidth, MAX_DIMENSION / originalHeight);
+      const newWidth = Math.floor(originalWidth * scaleFactor);
+      const newHeight = Math.floor(originalHeight * scaleFactor);
+
+      console.log(`  📐 Resizing screenshot from ${originalWidth}x${originalHeight} to ${newWidth}x${newHeight} (scale: ${scaleFactor.toFixed(2)})`);
+
+      processedBuffer = await sharp(screenshotBuffer)
+        .resize(newWidth, newHeight, { fit: 'inside' })
+        .png()
+        .toBuffer();
+    }
+
     const response = await anthropic.messages.create({
       model: "claude-opus-4-5-20251101",
       max_tokens: 2000,
@@ -127,12 +154,12 @@ async function detectSectionsWithVision(
               source: {
                 type: "base64",
                 media_type: "image/png",
-                data: screenshotBuffer.toString("base64"),
+                data: processedBuffer.toString("base64"),
               },
             },
             {
               type: "text",
-              text: `Analyze this webpage screenshot and identify the bounding box coordinates for the following sections. The screenshot dimensions are ${viewportWidth}x${viewportHeight} pixels.
+              text: `Analyze this webpage screenshot and identify the bounding box coordinates for the following sections. The screenshot dimensions are ${Math.floor(originalWidth * scaleFactor)}x${Math.floor(originalHeight * scaleFactor)} pixels.
 
 **Sections to identify:**
 1. **pricing** - The section containing pricing plans, price cards, or pricing tables
@@ -175,19 +202,27 @@ For each section you can identify, provide coordinates in pixels as: {x: number,
 
     const sections = JSON.parse(jsonMatch[0]);
 
-    // Validate coordinates
+    // Scale coordinates back to original dimensions if image was resized
     const validatedSections: Record<string, any> = {};
     for (const [section, coords] of Object.entries(sections as Record<string, any>)) {
+      // Scale coordinates back to original size
+      const scaledCoords = {
+        x: Math.floor(coords.x / scaleFactor),
+        y: Math.floor(coords.y / scaleFactor),
+        width: Math.floor(coords.width / scaleFactor),
+        height: Math.floor(coords.height / scaleFactor),
+      };
+
       if (
-        coords.x >= 0 &&
-        coords.y >= 0 &&
-        coords.width >= 300 &&
-        coords.height >= 200 &&
-        coords.x + coords.width <= viewportWidth * 3 && // Allow for long pages
-        coords.y + coords.height <= viewportHeight * 20 // Full page can be 20x viewport height
+        scaledCoords.x >= 0 &&
+        scaledCoords.y >= 0 &&
+        scaledCoords.width >= 300 &&
+        scaledCoords.height >= 200 &&
+        scaledCoords.x + scaledCoords.width <= originalWidth * 1.1 && // Allow 10% tolerance
+        scaledCoords.y + scaledCoords.height <= originalHeight * 1.1
       ) {
-        validatedSections[section] = coords;
-        console.log(`  ✅ ${section}: (${coords.x}, ${coords.y}) ${coords.width}x${coords.height}`);
+        validatedSections[section] = scaledCoords;
+        console.log(`  ✅ ${section}: (${scaledCoords.x}, ${scaledCoords.y}) ${scaledCoords.width}x${scaledCoords.height}`);
       } else {
         console.log(`  ⚠️  ${section}: Invalid coordinates, skipping`);
       }
