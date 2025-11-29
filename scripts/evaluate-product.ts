@@ -742,17 +742,33 @@ async function pushScreenshotsToR2(
     }
   }
 
+  console.log(`📤 Uploading ${screenshotUploads.length} screenshots to R2...`);
+
   for (const [index, item] of screenshotUploads.entries()) {
     const resolvedPath = resolveScreenshotPath(item.localPath);
-    if (!resolvedPath || !existsSync(resolvedPath)) continue;
+    console.log(`  [${index + 1}/${screenshotUploads.length}] Original path: ${item.localPath}`);
+    console.log(`  [${index + 1}/${screenshotUploads.length}] Resolved path: ${resolvedPath}`);
+    console.log(`  [${index + 1}/${screenshotUploads.length}] File exists: ${resolvedPath && existsSync(resolvedPath)}`);
+
+    if (!resolvedPath || !existsSync(resolvedPath)) {
+      console.log(`  [${index + 1}/${screenshotUploads.length}] ⚠️ Skipping - file not found`);
+      continue;
+    }
 
     const key = `${baseKey}/screenshot-${index}.png`;
+    console.log(`  [${index + 1}/${screenshotUploads.length}] Uploading to R2 key: ${key}`);
     const uploaded = await uploadToR2(resolvedPath, key);
     if (uploaded) {
+      console.log(`  [${index + 1}/${screenshotUploads.length}] ✅ Uploaded: ${uploaded}`);
       item.assign(uploaded);
       await removeLocalFile(resolvedPath);
+    } else {
+      console.log(`  [${index + 1}/${screenshotUploads.length}] ❌ Upload failed`);
     }
   }
+
+  console.log(`📤 R2 upload complete`);
+}
 }
 
 // ---------------------------------------------------------------------------
