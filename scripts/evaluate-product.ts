@@ -754,13 +754,30 @@ async function pushScreenshotsToR2(
 
   console.log(`📤 Uploading ${screenshotUploads.length} screenshots to R2...`);
 
+  // Track uploaded files to avoid duplicates
+  const uploadedFiles = new Map<string, string>(); // localPath -> R2 URL
+
   for (const [index, item] of screenshotUploads.entries()) {
     const resolvedPath = resolveScreenshotPath(item.localPath);
     console.log(`  [${index + 1}/${screenshotUploads.length}] Original path: ${item.localPath}`);
     console.log(`  [${index + 1}/${screenshotUploads.length}] Resolved path: ${resolvedPath}`);
-    console.log(`  [${index + 1}/${screenshotUploads.length}] File exists: ${resolvedPath && existsSync(resolvedPath)}`);
 
-    if (!resolvedPath || !existsSync(resolvedPath)) {
+    if (!resolvedPath) {
+      console.log(`  [${index + 1}/${screenshotUploads.length}] ⚠️ Skipping - invalid path`);
+      continue;
+    }
+
+    // Check if we already uploaded this file
+    if (uploadedFiles.has(resolvedPath)) {
+      const existingUrl = uploadedFiles.get(resolvedPath)!;
+      console.log(`  [${index + 1}/${screenshotUploads.length}] ♻️ Reusing already uploaded file`);
+      item.assign(existingUrl);
+      continue;
+    }
+
+    console.log(`  [${index + 1}/${screenshotUploads.length}] File exists: ${existsSync(resolvedPath)}`);
+
+    if (!existsSync(resolvedPath)) {
       console.log(`  [${index + 1}/${screenshotUploads.length}] ⚠️ Skipping - file not found`);
       continue;
     }
@@ -770,6 +787,7 @@ async function pushScreenshotsToR2(
     const uploaded = await uploadToR2(resolvedPath, key);
     if (uploaded) {
       console.log(`  [${index + 1}/${screenshotUploads.length}] ✅ Uploaded: ${uploaded}`);
+      uploadedFiles.set(resolvedPath, uploaded);
       item.assign(uploaded);
       await removeLocalFile(resolvedPath);
     } else {
@@ -777,7 +795,7 @@ async function pushScreenshotsToR2(
     }
   }
 
-  console.log(`📤 R2 upload complete`);
+  console.log(`📤 R2 upload complete - ${uploadedFiles.size} unique files uploaded`);
 }
 
 // ---------------------------------------------------------------------------
