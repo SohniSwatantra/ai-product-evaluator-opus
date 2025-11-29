@@ -36,6 +36,7 @@ jobs:
             R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
             R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
             R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+            R2_PUBLIC_URL: ${{ secrets.R2_PUBLIC_URL }}
             PRODUCT_URL: ${{ github.event.client_payload.productUrl }}
             DEMOGRAPHICS: ${{ github.event.client_payload.demographics }}
             JOB_ID: ${{ github.event.client_payload.jobId }}
