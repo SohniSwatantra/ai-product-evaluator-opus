@@ -358,7 +358,7 @@ ${scrapedDataAppendix}
 `;
 
   const evaluationResponse = await anthropic.messages.create({
-    model: "claude-sonnet-4-5-20250929",
+    model: "claude-opus-4-5-20250514",
     max_tokens: 3000,
     messages: [{ role: "user", content: evaluationPrompt }],
   });
@@ -502,7 +502,7 @@ Consider:
 Write naturally and conversationally. Be specific about WHY you would or wouldn't buy it. Don't use a rating scale - just explain your thoughts and feelings about purchasing this product.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-opus-4-5-20250514",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     });
@@ -541,7 +541,7 @@ async function enrichWithAXAnalysis(evaluation: ProductEvaluation, productUrl: s
   try {
     const prompt = createAXEvaluationPrompt(productUrl);
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-opus-4-5-20250514",
       max_tokens: 1500,
       messages: [{ role: "user", content: prompt }],
     });
@@ -647,7 +647,7 @@ Example format:
 Provide 4-6 section recommendations focusing on the most impactful improvements for this specific demographic.`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-opus-4-5-20250514",
       max_tokens: 3000,
       messages: [{ role: "user", content: prompt }],
     });
