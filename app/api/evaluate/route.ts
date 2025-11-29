@@ -54,14 +54,14 @@ export async function POST(request: Request) {
     // Create job in database
     await createEvaluationJob(jobId, normalizedUrl, demographics, userId);
 
-    // Enqueue Netlify async workload
-    await enqueueEvaluationWorkload({
+    // Trigger GitHub Actions workflow via repository_dispatch
+    await triggerGitHubActionsWorkflow({
       productUrl: normalizedUrl,
       demographics,
       jobId,
     });
 
-    console.log(`✅ Job ${jobId} queued for Netlify async processing`);
+    console.log(`✅ Job ${jobId} dispatched to GitHub Actions`);
 
     // Return job ID immediately (frontend will poll for results)
     return NextResponse.json({
@@ -84,25 +84,34 @@ export async function POST(request: Request) {
 }
 
 
-async function enqueueEvaluationWorkload(payload: { productUrl: string; demographics: Demographics; jobId: string }) {
-  const enqueueUrl = process.env.NETLIFY_WORKLOAD_ENQUEUE_URL;
-  const enqueueToken = process.env.NETLIFY_WORKLOAD_TOKEN;
+async function triggerGitHubActionsWorkflow(payload: { productUrl: string; demographics: Demographics; jobId: string }) {
+  const githubToken = process.env.GITHUB_TOKEN;
+  const githubRepo = process.env.GITHUB_REPO || "SohniSwatantra/ai-product-evaluator-opus";
 
-  if (!enqueueUrl) {
-    throw new Error("NETLIFY_WORKLOAD_ENQUEUE_URL is not configured. Set it to your Netlify async workload enqueue endpoint.");
+  if (!githubToken) {
+    throw new Error("GITHUB_TOKEN is not configured. Set it in your Netlify environment variables.");
   }
 
-  const response = await fetch(`${enqueueUrl.replace(/\/$/, "")}/product-evaluation`, {
+  const response = await fetch(`https://api.github.com/repos/${githubRepo}/dispatches`, {
     method: "POST",
     headers: {
+      "Accept": "application/vnd.github+json",
+      "Authorization": `Bearer ${githubToken}`,
+      "X-GitHub-Api-Version": "2022-11-28",
       "Content-Type": "application/json",
-      ...(enqueueToken ? { Authorization: `Bearer ${enqueueToken}` } : {}),
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      event_type: "scrape-product",
+      client_payload: {
+        productUrl: payload.productUrl,
+        demographics: JSON.stringify(payload.demographics),
+        jobId: payload.jobId,
+      },
+    }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`Failed to enqueue Netlify workload: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(`Failed to trigger GitHub Actions: ${response.status} ${response.statusText} - ${errorText}`);
   }
 }
