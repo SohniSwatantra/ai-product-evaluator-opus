@@ -7,6 +7,7 @@ import { chromium, type Browser, type Page } from "playwright";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
+import Anthropic from "@anthropic-ai/sdk";
 
 export interface SocialProofData {
   starRating?: number; // 1-5 scale
@@ -94,6 +95,153 @@ function formatPublicPath(base: string, filename: string): string {
   }
   return join(base, filename);
 }
+
+/**
+ * Use Claude Vision API to detect section coordinates from a full-page screenshot
+ */
+async function detectSectionsWithVision(
+  screenshotBuffer: Buffer,
+  viewportWidth: number,
+  viewportHeight: number
+): Promise<Record<string, { x: number; y: number; width: number; height: number }> | null> {
+  try {
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicApiKey) {
+      console.warn("⚠️  ANTHROPIC_API_KEY not found, skipping Vision-based section detection");
+      return null;
+    }
+
+    const anthropic = new Anthropic({ apiKey: anthropicApiKey });
+
+    console.log("🔍 Using Claude Vision to detect section coordinates...");
+
+    const response = await anthropic.messages.create({
+      model: "claude-opus-4-5-20251101",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: screenshotBuffer.toString("base64"),
+              },
+            },
+            {
+              type: "text",
+              text: `Analyze this webpage screenshot and identify the bounding box coordinates for the following sections. The screenshot dimensions are ${viewportWidth}x${viewportHeight} pixels.
+
+**Sections to identify:**
+1. **pricing** - The section containing pricing plans, price cards, or pricing tables
+2. **socialProof** - The section with customer testimonials, reviews, ratings, or user testimonials
+3. **trustSignals** - The section showing security badges, guarantees, certifications, or trust indicators
+4. **marketing** - The section with main call-to-action buttons, sign-up forms, or conversion elements
+5. **features** - The section listing product features, benefits, or feature cards
+
+For each section you can identify, provide coordinates in pixels as: {x: number, y: number, width: number, height: number}
+
+**Return ONLY valid JSON** in this exact format:
+{
+  "pricing": {"x": 0, "y": 800, "width": 1920, "height": 600},
+  "socialProof": {"x": 0, "y": 1400, "width": 1920, "height": 500},
+  "trustSignals": {"x": 0, "y": 2800, "width": 1920, "height": 400},
+  "marketing": {"x": 0, "y": 100, "width": 1920, "height": 700},
+  "features": {"x": 0, "y": 1900, "width": 1920, "height": 600}
+}
+
+**Important:**
+- Only include sections you can confidently identify
+- Coordinates must be within screenshot bounds (0-${viewportWidth} for x/width, 0-${viewportHeight} for y/height)
+- Each section should have minimum dimensions of 300x200 pixels
+- If you cannot find a section, omit it from the JSON
+- Do NOT include any explanation, only return the JSON object`,
+            },
+          ],
+        },
+      ],
+    });
+
+    const responseText = response.content[0].type === "text" ? response.content[0].text : "";
+
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn("⚠️  Vision API did not return valid JSON");
+      return null;
+    }
+
+    const sections = JSON.parse(jsonMatch[0]);
+
+    // Validate coordinates
+    const validatedSections: Record<string, any> = {};
+    for (const [section, coords] of Object.entries(sections as Record<string, any>)) {
+      if (
+        coords.x >= 0 &&
+        coords.y >= 0 &&
+        coords.width >= 300 &&
+        coords.height >= 200 &&
+        coords.x + coords.width <= viewportWidth * 3 && // Allow for long pages
+        coords.y + coords.height <= viewportHeight * 20 // Full page can be 20x viewport height
+      ) {
+        validatedSections[section] = coords;
+        console.log(`  ✅ ${section}: (${coords.x}, ${coords.y}) ${coords.width}x${coords.height}`);
+      } else {
+        console.log(`  ⚠️  ${section}: Invalid coordinates, skipping`);
+      }
+    }
+
+    const detectedCount = Object.keys(validatedSections).length;
+    console.log(`✅ Vision API detected ${detectedCount}/5 sections`);
+
+    return Object.keys(validatedSections).length > 0 ? validatedSections : null;
+  } catch (error) {
+    console.error("❌ Vision-based section detection failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Capture screenshot using Vision API coordinates
+ */
+async function captureScreenshotFromCoords(
+  page: Page,
+  coords: { x: number; y: number; width: number; height: number },
+  filename: string,
+  screenshotsDir: string,
+  publicBasePath: string,
+  sectionName: string
+): Promise<string> {
+  try {
+    // Add padding around the detected section
+    const padding = 20;
+    const clip = {
+      x: Math.max(0, coords.x - padding),
+      y: Math.max(0, coords.y - padding),
+      width: Math.min(1920 * 3, coords.width + padding * 2),
+      height: Math.min(1080 * 20, coords.height + padding * 2),
+    };
+
+    // Capture screenshot
+    const screenshotBuffer = await page.screenshot({
+      type: "png",
+      clip,
+    });
+
+    // Save to file
+    const filepath = join(screenshotsDir, filename);
+    await writeFile(filepath, screenshotBuffer);
+
+    console.log(`  ✅ ${sectionName}: Captured using Vision coordinates`);
+    return formatPublicPath(publicBasePath, filename);
+  } catch (error) {
+    console.warn(`  ❌ ${sectionName}: Failed to capture from coordinates - ${error}`);
+    throw error;
+  }
+}
+
 /**
  * Capture screenshot of a specific element/section on the page
  */
@@ -614,120 +762,222 @@ export async function scrapeWebsite(
     // Hero section (already captured above)
     sectionScreenshots.hero = formatPublicPath(publicBase, heroFilename);
 
-    // Pricing section - Reliable selectors (NO text-matching)
-    const pricingSectionPath = await captureElementScreenshot(
-      page,
-      [
-        'section[class*="pricing"]',
-        'div[id*="pricing"]',
-        'section[id*="pricing"]',
-        '[data-section="pricing"]',
-        '[class*="price-section"]',
-        '[class*="pricing-section"]',
-        '[class*="pricing-table"]',
-        '[class*="price-card"]',
-        '[class*="pricing-card"]',
-        'section:has([class*="price-tier"])',
-        'main section:nth-of-type(2)', // Common position for pricing
-        'main section:nth-of-type(3)',
-      ],
-      `${sanitizedUrl}-${timestamp}-pricing.png`,
-      screenshotsDir,
-      publicBase,
-      "Pricing"
+    // Try Vision API first for intelligent section detection
+    const fullPageScreenshot = await page.screenshot({
+      fullPage: true,
+      type: "png",
+    });
+
+    const visionDetectedSections = await detectSectionsWithVision(
+      fullPageScreenshot,
+      viewportWidth,
+      viewportHeight
     );
+
+    // Pricing section - Try Vision first, fall back to CSS selectors
+    let pricingSectionPath: string | undefined;
+    if (visionDetectedSections?.pricing) {
+      try {
+        pricingSectionPath = await captureScreenshotFromCoords(
+          page,
+          visionDetectedSections.pricing,
+          `${sanitizedUrl}-${timestamp}-pricing.png`,
+          screenshotsDir,
+          publicBase,
+          "Pricing"
+        );
+      } catch (error) {
+        console.log("  ⚠️  Vision-based pricing capture failed, trying CSS selectors");
+      }
+    }
+
+    if (!pricingSectionPath) {
+      pricingSectionPath = await captureElementScreenshot(
+        page,
+        [
+          'section[class*="pricing"]',
+          'div[id*="pricing"]',
+          'section[id*="pricing"]',
+          '[data-section="pricing"]',
+          '[class*="price-section"]',
+          '[class*="pricing-section"]',
+          '[class*="pricing-table"]',
+          '[class*="price-card"]',
+          '[class*="pricing-card"]',
+          'section:has([class*="price-tier"])',
+          'main section:nth-of-type(2)', // Common position for pricing
+          'main section:nth-of-type(3)',
+        ],
+        `${sanitizedUrl}-${timestamp}-pricing.png`,
+        screenshotsDir,
+        publicBase,
+        "Pricing"
+      );
+    }
     if (pricingSectionPath) sectionScreenshots.pricing = pricingSectionPath;
 
-    // Social Proof section - Reliable selectors (NO text-matching)
-    const socialProofSectionPath = await captureElementScreenshot(
-      page,
-      [
-        'section[class*="testimonial"]',
-        'div[id*="testimonials"]',
-        'section[id*="testimonials"]',
-        '[data-section="testimonials"]',
-        '[class*="customer-testimonials"]',
-        '[class*="reviews-section"]',
-        '[class*="testimonials-section"]',
-        'section:has([class*="review"])',
-        '[class*="social-proof"]',
-        '[class*="customer-stories"]',
-        'section:has([class*="rating"])',
-        'main section:nth-of-type(4)', // Often near bottom
-        'main section:nth-of-type(5)',
-      ],
-      `${sanitizedUrl}-${timestamp}-social-proof.png`,
-      screenshotsDir,
-      publicBase,
-      "Social Proof"
-    );
+    // Social Proof section - Try Vision first, fall back to CSS selectors
+    let socialProofSectionPath: string | undefined;
+    if (visionDetectedSections?.socialProof) {
+      try {
+        socialProofSectionPath = await captureScreenshotFromCoords(
+          page,
+          visionDetectedSections.socialProof,
+          `${sanitizedUrl}-${timestamp}-social-proof.png`,
+          screenshotsDir,
+          publicBase,
+          "Social Proof"
+        );
+      } catch (error) {
+        console.log("  ⚠️  Vision-based social proof capture failed, trying CSS selectors");
+      }
+    }
+
+    if (!socialProofSectionPath) {
+      socialProofSectionPath = await captureElementScreenshot(
+        page,
+        [
+          'section[class*="testimonial"]',
+          'div[id*="testimonials"]',
+          'section[id*="testimonials"]',
+          '[data-section="testimonials"]',
+          '[class*="customer-testimonials"]',
+          '[class*="reviews-section"]',
+          '[class*="testimonials-section"]',
+          'section:has([class*="review"])',
+          '[class*="social-proof"]',
+          '[class*="customer-stories"]',
+          'section:has([class*="rating"])',
+          'main section:nth-of-type(4)', // Often near bottom
+          'main section:nth-of-type(5)',
+        ],
+        `${sanitizedUrl}-${timestamp}-social-proof.png`,
+        screenshotsDir,
+        publicBase,
+        "Social Proof"
+      );
+    }
     if (socialProofSectionPath) sectionScreenshots.socialProof = socialProofSectionPath;
 
-    // Trust Signals section - Reliable selectors (NO text-matching)
-    const trustSignalsSectionPath = await captureElementScreenshot(
-      page,
-      [
-        'footer', // Footer often has trust badges
-        'section[class*="trust"]',
-        '[class*="security-section"]',
-        '[data-section="trust"]',
-        '[class*="guarantee-section"]',
-        '[class*="trust-badges"]',
-        '[class*="security-badges"]',
-        'section:has([class*="badge"])',
-        'div[class*="partners"]', // Partner logos = trust
-        'main section:last-of-type', // Often at the end
-      ],
-      `${sanitizedUrl}-${timestamp}-trust-signals.png`,
-      screenshotsDir,
-      publicBase,
-      "Trust Signals"
-    );
+    // Trust Signals section - Try Vision first, fall back to CSS selectors
+    let trustSignalsSectionPath: string | undefined;
+    if (visionDetectedSections?.trustSignals) {
+      try {
+        trustSignalsSectionPath = await captureScreenshotFromCoords(
+          page,
+          visionDetectedSections.trustSignals,
+          `${sanitizedUrl}-${timestamp}-trust-signals.png`,
+          screenshotsDir,
+          publicBase,
+          "Trust Signals"
+        );
+      } catch (error) {
+        console.log("  ⚠️  Vision-based trust signals capture failed, trying CSS selectors");
+      }
+    }
+
+    if (!trustSignalsSectionPath) {
+      trustSignalsSectionPath = await captureElementScreenshot(
+        page,
+        [
+          'footer', // Footer often has trust badges
+          'section[class*="trust"]',
+          '[class*="security-section"]',
+          '[data-section="trust"]',
+          '[class*="guarantee-section"]',
+          '[class*="trust-badges"]',
+          '[class*="security-badges"]',
+          'section:has([class*="badge"])',
+          'div[class*="partners"]', // Partner logos = trust
+          'main section:last-of-type', // Often at the end
+        ],
+        `${sanitizedUrl}-${timestamp}-trust-signals.png`,
+        screenshotsDir,
+        publicBase,
+        "Trust Signals"
+      );
+    }
     if (trustSignalsSectionPath) sectionScreenshots.trustSignals = trustSignalsSectionPath;
 
-    // Marketing Elements section - Reliable selectors (NO text-matching)
-    const marketingSectionPath = await captureElementScreenshot(
-      page,
-      [
-        'section:has([class*="cta"])',
-        '[class*="call-to-action-section"]',
-        '[data-section="cta"]',
-        '[class*="cta-section"]',
-        '[class*="hero"]:has(button)',
-        '[class*="conversion-section"]',
-        '[class*="action-section"]',
-        'section:has([class*="sign-up"])',
-        'section:has([class*="get-started"])',
-        'main section:first-of-type', // Hero often has CTAs
-      ],
-      `${sanitizedUrl}-${timestamp}-marketing.png`,
-      screenshotsDir,
-      publicBase,
-      "Marketing Elements"
-    );
+    // Marketing Elements section - Try Vision first, fall back to CSS selectors
+    let marketingSectionPath: string | undefined;
+    if (visionDetectedSections?.marketing) {
+      try {
+        marketingSectionPath = await captureScreenshotFromCoords(
+          page,
+          visionDetectedSections.marketing,
+          `${sanitizedUrl}-${timestamp}-marketing.png`,
+          screenshotsDir,
+          publicBase,
+          "Marketing Elements"
+        );
+      } catch (error) {
+        console.log("  ⚠️  Vision-based marketing capture failed, trying CSS selectors");
+      }
+    }
+
+    if (!marketingSectionPath) {
+      marketingSectionPath = await captureElementScreenshot(
+        page,
+        [
+          'section:has([class*="cta"])',
+          '[class*="call-to-action-section"]',
+          '[data-section="cta"]',
+          '[class*="cta-section"]',
+          '[class*="hero"]:has(button)',
+          '[class*="conversion-section"]',
+          '[class*="action-section"]',
+          'section:has([class*="sign-up"])',
+          'section:has([class*="get-started"])',
+          'main section:first-of-type', // Hero often has CTAs
+        ],
+        `${sanitizedUrl}-${timestamp}-marketing.png`,
+        screenshotsDir,
+        publicBase,
+        "Marketing Elements"
+      );
+    }
     if (marketingSectionPath) sectionScreenshots.marketing = marketingSectionPath;
 
-    // Features section - Reliable selectors (NO text-matching)
-    const featuresSectionPath = await captureElementScreenshot(
-      page,
-      [
-        'section[class*="features"]',
-        'div[id*="features"]',
-        'section[id*="features"]',
-        '[data-section="features"]',
-        '[class*="features-section"]',
-        '[class*="feature-list"]',
-        '[class*="product-features"]',
-        '[class*="key-features"]',
-        'section:has([class*="feature-card"])',
-        '[class*="benefits-section"]',
-        'main section:nth-of-type(2)', // Often 2nd section
-      ],
-      `${sanitizedUrl}-${timestamp}-features.png`,
-      screenshotsDir,
-      publicBase,
-      "Features"
-    );
+    // Features section - Try Vision first, fall back to CSS selectors
+    let featuresSectionPath: string | undefined;
+    if (visionDetectedSections?.features) {
+      try {
+        featuresSectionPath = await captureScreenshotFromCoords(
+          page,
+          visionDetectedSections.features,
+          `${sanitizedUrl}-${timestamp}-features.png`,
+          screenshotsDir,
+          publicBase,
+          "Features"
+        );
+      } catch (error) {
+        console.log("  ⚠️  Vision-based features capture failed, trying CSS selectors");
+      }
+    }
+
+    if (!featuresSectionPath) {
+      featuresSectionPath = await captureElementScreenshot(
+        page,
+        [
+          'section[class*="features"]',
+          'div[id*="features"]',
+          'section[id*="features"]',
+          '[data-section="features"]',
+          '[class*="features-section"]',
+          '[class*="feature-list"]',
+          '[class*="product-features"]',
+          '[class*="key-features"]',
+          'section:has([class*="feature-card"])',
+          '[class*="benefits-section"]',
+          'main section:nth-of-type(2)', // Often 2nd section
+        ],
+        `${sanitizedUrl}-${timestamp}-features.png`,
+        screenshotsDir,
+        publicBase,
+        "Features"
+      );
+    }
     if (featuresSectionPath) sectionScreenshots.features = featuresSectionPath;
 
     // Detailed summary
@@ -740,17 +990,11 @@ export async function scrapeWebsite(
     console.log(`   Features: ${sectionScreenshots.features ? '✓' : '✗'}`);
     console.log(`   Total: ${Object.keys(sectionScreenshots).length}/6`);
 
-    // Capture full page screenshot
-    const screenshotBuffer = await page.screenshot({
-      fullPage,
-      type: "png",
-    });
-
-    // Save full page screenshot to file
-    await writeFile(screenshotPath, screenshotBuffer);
+    // Save full page screenshot to file (reuse from Vision detection)
+    await writeFile(screenshotPath, fullPageScreenshot);
 
     // Convert to base64 for API response
-    const screenshotBase64 = screenshotBuffer.toString("base64");
+    const screenshotBase64 = fullPageScreenshot.toString("base64");
 
     console.log("✅ Website scraped successfully");
 

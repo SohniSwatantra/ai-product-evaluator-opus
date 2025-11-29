@@ -381,9 +381,14 @@ ${scrapedDataAppendix}
 
   const evaluation = cleanAndParseJSON(evaluationText);
 
-  await enrichWithSSRAnalysis(evaluation, validatedUrl, demographicDescription);
-  await enrichWithAXAnalysis(evaluation, validatedUrl);
-  await enrichWithSectionRecommendations(evaluation, validatedUrl, demographicDescription, scrapedData, productInfo);
+  // Run all enrichment analyses in parallel for better performance
+  console.log("🔄 Running parallel analyses (SSR, AX, Section Recommendations)...");
+  await Promise.all([
+    enrichWithSSRAnalysis(evaluation, validatedUrl, demographicDescription),
+    enrichWithAXAnalysis(evaluation, validatedUrl),
+    enrichWithSectionRecommendations(evaluation, validatedUrl, demographicDescription, scrapedData, productInfo)
+  ]);
+  console.log("✅ All analyses completed");
 
   if (!scrapedData.error) {
     evaluation.websiteSnapshot = {
@@ -755,22 +760,22 @@ async function pushScreenshotsToR2(
     }
   }
 
-  console.log(`📤 Uploading ${screenshotUploads.length} screenshots to R2...`);
+  console.log(`📤 Uploading ${screenshotUploads.length} screenshots to R2 in parallel...`);
 
   // Track uploaded files to avoid duplicates
   const uploadedFiles = new Map<string, string>(); // localPath -> R2 URL
+  const uploadTasks: Array<{ item: typeof screenshotUploads[0]; resolvedPath: string; key: string; index: number }> = [];
 
+  // Prepare all upload tasks
   for (const [index, item] of screenshotUploads.entries()) {
     const resolvedPath = resolveScreenshotPath(item.localPath);
-    console.log(`  [${index + 1}/${screenshotUploads.length}] Original path: ${item.localPath}`);
-    console.log(`  [${index + 1}/${screenshotUploads.length}] Resolved path: ${resolvedPath}`);
 
     if (!resolvedPath) {
       console.log(`  [${index + 1}/${screenshotUploads.length}] ⚠️ Skipping - invalid path`);
       continue;
     }
 
-    // Check if we already uploaded this file
+    // Check if we already have this file queued
     if (uploadedFiles.has(resolvedPath)) {
       const existingUrl = uploadedFiles.get(resolvedPath)!;
       console.log(`  [${index + 1}/${screenshotUploads.length}] ♻️ Reusing already uploaded file`);
@@ -778,27 +783,36 @@ async function pushScreenshotsToR2(
       continue;
     }
 
-    console.log(`  [${index + 1}/${screenshotUploads.length}] File exists: ${existsSync(resolvedPath)}`);
-
     if (!existsSync(resolvedPath)) {
       console.log(`  [${index + 1}/${screenshotUploads.length}] ⚠️ Skipping - file not found`);
       continue;
     }
 
     const key = `${baseKey}/screenshot-${index}.png`;
-    console.log(`  [${index + 1}/${screenshotUploads.length}] Uploading to R2 key: ${key}`);
-    const uploaded = await uploadToR2(resolvedPath, key);
-    if (uploaded) {
-      console.log(`  [${index + 1}/${screenshotUploads.length}] ✅ Uploaded: ${uploaded}`);
-      uploadedFiles.set(resolvedPath, uploaded);
-      item.assign(uploaded);
-      await removeLocalFile(resolvedPath);
-    } else {
-      console.log(`  [${index + 1}/${screenshotUploads.length}] ❌ Upload failed`);
-    }
+    uploadTasks.push({ item, resolvedPath, key, index });
+    uploadedFiles.set(resolvedPath, "pending"); // Mark as pending to avoid duplicate queuing
   }
 
-  console.log(`📤 R2 upload complete - ${uploadedFiles.size} unique files uploaded`);
+  // Upload all screenshots in parallel
+  const uploadResults = await Promise.allSettled(
+    uploadTasks.map(async ({ item, resolvedPath, key, index }) => {
+      console.log(`  [${index + 1}/${screenshotUploads.length}] Uploading to R2: ${key}`);
+      const uploaded = await uploadToR2(resolvedPath, key);
+      if (uploaded) {
+        console.log(`  [${index + 1}/${screenshotUploads.length}] ✅ Uploaded: ${uploaded}`);
+        uploadedFiles.set(resolvedPath, uploaded);
+        item.assign(uploaded);
+        await removeLocalFile(resolvedPath);
+        return { success: true, url: uploaded };
+      } else {
+        console.log(`  [${index + 1}/${screenshotUploads.length}] ❌ Upload failed`);
+        return { success: false };
+      }
+    })
+  );
+
+  const successCount = uploadResults.filter((r) => r.status === "fulfilled" && r.value.success).length;
+  console.log(`📤 R2 upload complete - ${successCount}/${uploadTasks.length} files uploaded`);
 }
 
 // ---------------------------------------------------------------------------
