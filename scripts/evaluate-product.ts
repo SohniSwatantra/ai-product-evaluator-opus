@@ -37,6 +37,7 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? "";
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID ?? "";
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY ?? "";
 const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME ?? "ai-evaluator-screenshots";
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ?? "";
 
 if (!PRODUCT_URL || !JOB_ID || !DATABASE_URL || !ANTHROPIC_API_KEY) {
   console.error("Missing required environment variables. Exiting.");
@@ -110,7 +111,9 @@ async function uploadToR2(localPath: string, key: string): Promise<string | null
       })
     );
 
-    const publicUrl = `https://pub-${R2_ACCOUNT_ID}.r2.dev/${key}`;
+    // Use R2_PUBLIC_URL if provided, otherwise construct from account ID
+    const baseUrl = R2_PUBLIC_URL || `https://pub-${R2_ACCOUNT_ID}.r2.dev`;
+    const publicUrl = `${baseUrl}/${key}`;
     console.log(`✅ Uploaded to R2: ${publicUrl}`);
     return publicUrl;
   } catch (error) {
