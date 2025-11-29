@@ -97,6 +97,67 @@ function formatPublicPath(base: string, filename: string): string {
 }
 
 /**
+ * Validate screenshot coordinates
+ */
+function validateCoordinates(
+  coords: { x: number; y: number; width: number; height: number },
+  maxWidth: number,
+  maxHeight: number,
+  sectionName: string
+): { valid: boolean; reason?: string } {
+  // Check if coordinates are within bounds
+  if (coords.x < 0 || coords.y < 0) {
+    return { valid: false, reason: `Negative coordinates (x:${coords.x}, y:${coords.y})` };
+  }
+
+  if (coords.x + coords.width > maxWidth) {
+    return { valid: false, reason: `Exceeds width (${coords.x + coords.width} > ${maxWidth})` };
+  }
+
+  if (coords.y + coords.height > maxHeight) {
+    return { valid: false, reason: `Exceeds height (${coords.y + coords.height} > ${maxHeight})` };
+  }
+
+  // Check minimum dimensions
+  if (coords.width < 300 || coords.height < 200) {
+    return { valid: false, reason: `Too small (${coords.width}x${coords.height}, min: 300x200)` };
+  }
+
+  // Check maximum reasonable dimensions (section shouldn't be entire page)
+  if (coords.width > maxWidth * 0.95 && coords.height > maxHeight * 0.8) {
+    return { valid: false, reason: `Section too large (likely full page instead of section)` };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Correct coordinates to fit within bounds
+ */
+function correctCoordinateBounds(
+  coords: { x: number; y: number; width: number; height: number },
+  maxWidth: number,
+  maxHeight: number
+): { x: number; y: number; width: number; height: number } {
+  const corrected = { ...coords };
+
+  // Ensure within bounds
+  if (corrected.x + corrected.width > maxWidth) {
+    corrected.width = maxWidth - corrected.x;
+  }
+
+  if (corrected.y + corrected.height > maxHeight) {
+    corrected.height = maxHeight - corrected.y;
+  }
+
+  // Ensure positive
+  corrected.x = Math.max(0, corrected.x);
+  corrected.y = Math.max(0, corrected.y);
+
+  return corrected;
+}
+
+/**
  * Use Claude Vision API to detect section coordinates from a full-page screenshot
  */
 async function detectSectionsWithVision(
@@ -159,32 +220,58 @@ async function detectSectionsWithVision(
             },
             {
               type: "text",
-              text: `Analyze this webpage screenshot and identify the bounding box coordinates for the following sections. The screenshot dimensions are ${Math.floor(originalWidth * scaleFactor)}x${Math.floor(originalHeight * scaleFactor)} pixels.
+              text: `You are analyzing a webpage screenshot to identify exact bounding box coordinates for specific sections.
 
-**Sections to identify:**
-1. **pricing** - The section containing pricing plans, price cards, or pricing tables
-2. **socialProof** - The section with customer testimonials, reviews, ratings, or user testimonials
-3. **trustSignals** - The section showing security badges, guarantees, certifications, or trust indicators
-4. **marketing** - The section with main call-to-action buttons, sign-up forms, or conversion elements
-5. **features** - The section listing product features, benefits, or feature cards
+**Screenshot Dimensions:** ${Math.floor(originalWidth * scaleFactor)}px × ${Math.floor(originalHeight * scaleFactor)}px
 
-For each section you can identify, provide coordinates in pixels as: {x: number, y: number, width: number, height: number}
+**Sections to Identify:**
 
-**Return ONLY valid JSON** in this exact format:
+1. **pricing** - Look for:
+   - Price tags with $ or currency symbols
+   - Pricing tables or plan cards (Basic, Pro, Enterprise)
+   - "Buy Now" or "Subscribe" buttons near prices
+   - Monthly/Annual pricing toggles
+
+2. **socialProof** - Look for:
+   - Customer testimonials with quotes or cards
+   - Star ratings (★★★★★) with review counts
+   - Customer photos/avatars with feedback
+   - "What our customers say" sections
+
+3. **trustSignals** - Look for:
+   - Security badges (SSL, Norton, McAfee)
+   - Payment method icons (Visa, PayPal, Stripe)
+   - Guarantee text ("30-day money back")
+   - Certification logos or trust seals
+
+4. **marketing** - Look for:
+   - Hero section with primary CTA button
+   - Sign-up forms or email capture
+   - "Get Started" or "Try Free" buttons
+   - Prominent conversion-focused areas
+
+5. **features** - Look for:
+   - Feature lists with checkmarks or icons
+   - "What you get" or "Features" sections
+   - Grid of feature cards
+   - Benefit highlights
+
+**Critical Instructions:**
+✅ Return coordinates for VISIBLE content only
+✅ Ensure x + width ≤ ${Math.floor(originalWidth * scaleFactor)}
+✅ Ensure y + height ≤ ${Math.floor(originalHeight * scaleFactor)}
+✅ Minimum size: 300px × 200px per section
+✅ Coordinates must capture the ENTIRE section (not just part of it)
+✅ If a section is not clearly visible, omit it
+✅ Double-check coordinates are within image bounds
+
+**Response Format (JSON only, no markdown):**
 {
-  "pricing": {"x": 0, "y": 800, "width": 1920, "height": 600},
-  "socialProof": {"x": 0, "y": 1400, "width": 1920, "height": 500},
-  "trustSignals": {"x": 0, "y": 2800, "width": 1920, "height": 400},
-  "marketing": {"x": 0, "y": 100, "width": 1920, "height": 700},
-  "features": {"x": 0, "y": 1900, "width": 1920, "height": 600}
+  "pricing": {"x": 0, "y": 800, "width": 1920, "height": 600, "confidence": "high"},
+  "socialProof": {"x": 0, "y": 1400, "width": 1920, "height": 500, "confidence": "medium"}
 }
 
-**Important:**
-- Only include sections you can confidently identify
-- Coordinates must be within screenshot bounds (0-${viewportWidth} for x/width, 0-${viewportHeight} for y/height)
-- Each section should have minimum dimensions of 300x200 pixels
-- If you cannot find a section, omit it from the JSON
-- Do NOT include any explanation, only return the JSON object`,
+Only include sections you can see. Omit sections you cannot confidently locate.`,
             },
           ],
         },
@@ -213,18 +300,17 @@ For each section you can identify, provide coordinates in pixels as: {x: number,
         height: Math.floor(coords.height / scaleFactor),
       };
 
-      if (
-        scaledCoords.x >= 0 &&
-        scaledCoords.y >= 0 &&
-        scaledCoords.width >= 300 &&
-        scaledCoords.height >= 200 &&
-        scaledCoords.x + scaledCoords.width <= originalWidth * 1.1 && // Allow 10% tolerance
-        scaledCoords.y + scaledCoords.height <= originalHeight * 1.1
-      ) {
-        validatedSections[section] = scaledCoords;
-        console.log(`  ✅ ${section}: (${scaledCoords.x}, ${scaledCoords.y}) ${scaledCoords.width}x${scaledCoords.height}`);
+      // Comprehensive validation
+      const isValid = validateCoordinates(scaledCoords, originalWidth, originalHeight, section);
+
+      if (isValid.valid) {
+        // Apply bounds correction if needed
+        const correctedCoords = correctCoordinateBounds(scaledCoords, originalWidth, originalHeight);
+        validatedSections[section] = correctedCoords;
+        const confidence = coords.confidence || 'unknown';
+        console.log(`  ✅ ${section}: (${correctedCoords.x}, ${correctedCoords.y}) ${correctedCoords.width}x${correctedCoords.height} [${confidence}]`);
       } else {
-        console.log(`  ⚠️  ${section}: Invalid coordinates, skipping`);
+        console.log(`  ⚠️  ${section}: ${isValid.reason}`);
       }
     }
 
@@ -278,6 +364,49 @@ async function captureScreenshotFromCoords(
 }
 
 /**
+ * Validate section content based on type
+ */
+async function validateSectionContent(
+  page: Page,
+  element: any,
+  sectionType: string
+): Promise<boolean> {
+  try {
+    const text = await element.textContent();
+    if (!text) return false;
+
+    const textLower = text.toLowerCase();
+
+    switch (sectionType) {
+      case "Pricing":
+        // Check for price indicators
+        return /\$|€|£|¥|\d+[.,]\d{2}|price|pricing|plan|subscribe|buy/.test(textLower);
+
+      case "Social Proof":
+        // Check for review/testimonial indicators
+        return /★|⭐|review|testimonial|customer|rating|trust|feedback/.test(textLower);
+
+      case "Trust Signals":
+        // Check for trust indicators
+        return /secure|guarantee|certified|ssl|verified|trusted|badge|warranty/.test(textLower);
+
+      case "Marketing Elements":
+        // Check for CTA indicators
+        return /get started|sign up|try|free|join|register|buy now|subscribe/.test(textLower);
+
+      case "Features":
+        // Check for feature indicators
+        return /feature|benefit|includes|what you get|✓|✔|checkmark/.test(textLower);
+
+      default:
+        return true; // Unknown section type, assume valid
+    }
+  } catch {
+    return true; // If validation fails, assume valid (err on side of inclusion)
+  }
+}
+
+/**
  * Capture screenshot of a specific element/section on the page
  */
 async function captureElementScreenshot(
@@ -294,19 +423,32 @@ async function captureElementScreenshot(
       const selector = selectors[i];
       try {
         const element = await page.locator(selector).first();
-        const isVisible = await element.isVisible({ timeout: 5000 }); // Increased from 2s to 5s
+        const isVisible = await element.isVisible({ timeout: 5000 });
 
         if (isVisible) {
+          // Validate content before capturing
+          const hasValidContent = await validateSectionContent(page, element, sectionName || "");
+          if (!hasValidContent) {
+            console.log(`  ⚠️  ${sectionName || 'Section'}: Selector "${selector}" found but content doesn't match section type`);
+            continue; // Try next selector
+          }
+
           const boundingBox = await element.boundingBox();
 
           if (boundingBox) {
+            // Validate dimensions
+            if (boundingBox.width < 200 || boundingBox.height < 150) {
+              console.log(`  ⚠️  ${sectionName || 'Section'}: Element too small (${Math.floor(boundingBox.width)}x${Math.floor(boundingBox.height)})`);
+              continue;
+            }
+
             // Add padding around the element
             const padding = 20;
             const clip = {
               x: Math.max(0, boundingBox.x - padding),
               y: Math.max(0, boundingBox.y - padding),
-              width: Math.min(1920, boundingBox.width + padding * 2),
-              height: Math.min(1080, boundingBox.height + padding * 2),
+              width: Math.min(1920 * 3, boundingBox.width + padding * 2),
+              height: Math.min(1080 * 20, boundingBox.height + padding * 2),
             };
 
             // Capture screenshot
@@ -319,7 +461,7 @@ async function captureElementScreenshot(
             const filepath = join(screenshotsDir, filename);
             await writeFile(filepath, screenshotBuffer);
 
-            console.log(`  ✅ ${sectionName || 'Section'}: Captured using selector "${selector}"`);
+            console.log(`  ✅ ${sectionName || 'Section'}: Captured using selector "${selector}" [validated]`);
             return formatPublicPath(publicBasePath, filename);
           }
         }
