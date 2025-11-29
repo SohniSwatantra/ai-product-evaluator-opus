@@ -211,18 +211,28 @@ function resolveScreenshotPath(localPath: string | undefined | null): string | n
     return null;
   }
 
-  if (path.isAbsolute(localPath)) {
+  // If it's an absolute filesystem path and exists, return it
+  if (path.isAbsolute(localPath) && existsSync(localPath)) {
     return localPath;
   }
 
+  // Remove leading slashes to get relative path
   const sanitized = localPath.replace(/^\/+/, "");
+
+  // Try public/screenshots/ directory first (where web scraper saves files)
   const withPublic = path.join(process.cwd(), "public", sanitized);
   if (existsSync(withPublic)) {
     return withPublic;
   }
 
+  // Try direct path from cwd
   const direct = path.join(process.cwd(), sanitized);
-  return existsSync(direct) ? direct : withPublic;
+  if (existsSync(direct)) {
+    return direct;
+  }
+
+  // Return the public path as fallback (even if doesn't exist yet)
+  return withPublic;
 }
 
 // ---------------------------------------------------------------------------
