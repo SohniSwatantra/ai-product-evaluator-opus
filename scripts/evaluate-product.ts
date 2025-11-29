@@ -769,7 +769,6 @@ async function pushScreenshotsToR2(
 
   console.log(`📤 R2 upload complete`);
 }
-}
 
 // ---------------------------------------------------------------------------
 // Entrypoint
