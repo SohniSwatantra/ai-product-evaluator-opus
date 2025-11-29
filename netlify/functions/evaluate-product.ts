@@ -47,6 +47,24 @@ ${scrapedData.visibleText.substring(0, 5000)}
 `;
 }
 
+async function runParallelEnrichments(
+  evaluation: ProductEvaluation,
+  productUrl: string,
+  demographicDescription: string,
+  scrapedData: Awaited<ReturnType<typeof scrapeWebsite>>,
+  productInfo: ReturnType<typeof extractProductInfo>,
+  demographics: Demographics,
+  anthropic: Anthropic
+) {
+  console.log("🔄 Running parallel analyses (SSR, AX, Section Recommendations)...");
+  await Promise.all([
+    enrichWithSSRAnalysis(evaluation, productUrl, demographicDescription, anthropic),
+    enrichWithAXAnalysis(evaluation, productUrl, anthropic),
+    enrichWithSectionRecommendations(evaluation, productUrl, demographicDescription, scrapedData, productInfo, demographics, anthropic)
+  ]);
+  console.log("✅ All analyses completed");
+}
+
 async function enrichWithSSRAnalysis(
   evaluation: ProductEvaluation,
   productUrl: string,
