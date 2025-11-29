@@ -13,8 +13,7 @@ function buildScrapedDataAppendix(
 - Description: ${productInfo.description}
 
 **Key Features:**
-${productInfo.keyFeatures.length > 0 ? productInfo.keyFeatures.map((f) => `- ${f}`).join("
-") : "- No key features extracted"}
+${productInfo.keyFeatures.length > 0 ? productInfo.keyFeatures.map((f) => `- ${f}`).join("\n") : "- No key features extracted"}
 
 **Social Proof (Factor 3: Reviews, ratings, testimonials):**
 ${scrapedData.socialProof?.starRating ? `- Star Rating: ${scrapedData.socialProof.starRating}/5 (Sentiment: ${scrapedData.socialProof.reviewSentiment})` : "- Star Rating: Not found"}
