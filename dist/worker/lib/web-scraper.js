@@ -179,7 +179,10 @@ Only include sections you can see. Omit sections you cannot confidently locate.`
         const sections = JSON.parse(jsonMatch[0]);
         // Scale coordinates back to original dimensions if image was resized
         const validatedSections = {};
+        console.log(`  🔄 Processing Vision API results (scale factor: ${scaleFactor.toFixed(3)})`);
+        console.log(`     Original: ${originalWidth}x${originalHeight}, Resized: ${Math.floor(originalWidth * scaleFactor)}x${Math.floor(originalHeight * scaleFactor)}`);
         for (const [section, coords] of Object.entries(sections)) {
+            console.log(`  📍 ${section} (Vision API): (${coords.x}, ${coords.y}) ${coords.width}x${coords.height}`);
             // Scale coordinates back to original size
             const scaledCoords = {
                 x: Math.floor(coords.x / scaleFactor),
@@ -187,6 +190,7 @@ Only include sections you can see. Omit sections you cannot confidently locate.`
                 width: Math.floor(coords.width / scaleFactor),
                 height: Math.floor(coords.height / scaleFactor),
             };
+            console.log(`     Scaled back: (${scaledCoords.x}, ${scaledCoords.y}) ${scaledCoords.width}x${scaledCoords.height}`);
             // Comprehensive validation
             const isValid = validateCoordinates(scaledCoords, originalWidth, originalHeight, section);
             if (isValid.valid) {
@@ -214,14 +218,31 @@ Only include sections you can see. Omit sections you cannot confidently locate.`
  */
 async function captureScreenshotFromCoords(page, coords, filename, screenshotsDir, publicBasePath, sectionName) {
     try {
-        // Add padding around the detected section
-        const padding = 20;
-        const clip = {
-            x: Math.max(0, coords.x - padding),
-            y: Math.max(0, coords.y - padding),
-            width: Math.min(1920 * 3, coords.width + padding * 2),
-            height: Math.min(1080 * 20, coords.height + padding * 2),
+        // Get actual viewport dimensions to validate against
+        const viewport = page.viewportSize();
+        const actualWidth = viewport?.width || 1920;
+        // CRITICAL: Ensure coordinates don't exceed actual page dimensions
+        // The issue is that even after resizing, coordinates might be for the RESIZED image
+        // but we're capturing from the FULL page
+        const safeCoords = {
+            x: Math.max(0, Math.min(coords.x, actualWidth - 100)),
+            y: Math.max(0, coords.y),
+            width: Math.min(coords.width, actualWidth),
+            height: coords.height,
         };
+        // Add padding around the detected section
+        const padding = 10; // Reduced padding to avoid exceeding bounds
+        const clip = {
+            x: Math.max(0, safeCoords.x - padding),
+            y: Math.max(0, safeCoords.y - padding),
+            width: Math.min(actualWidth, safeCoords.width + padding * 2),
+            height: safeCoords.height + padding * 2, // Don't limit height here
+        };
+        // Final safety check before capture
+        if (clip.width < 100 || clip.height < 100) {
+            throw new Error(`Clip dimensions too small: ${clip.width}x${clip.height}`);
+        }
+        console.log(`  📸 ${sectionName}: Attempting capture at (${clip.x}, ${clip.y}) ${clip.width}x${clip.height}`);
         // Capture screenshot
         const screenshotBuffer = await page.screenshot({
             type: "png",
