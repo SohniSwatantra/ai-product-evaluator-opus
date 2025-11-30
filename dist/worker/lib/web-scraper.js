@@ -729,141 +729,94 @@ async function scrapeWebsite(url, options = {}) {
             fullPage: true,
             type: "png",
         });
-        const visionDetectedSections = await detectSectionsWithVision(fullPageScreenshot, viewportWidth, viewportHeight);
-        // Pricing section - Try Vision first, fall back to CSS selectors
-        let pricingSectionPath;
-        if (visionDetectedSections?.pricing) {
-            try {
-                pricingSectionPath = await captureScreenshotFromCoords(page, visionDetectedSections.pricing, `${sanitizedUrl}-${timestamp}-pricing.png`, screenshotsDir, publicBase, "Pricing");
-            }
-            catch (error) {
-                console.log("  ⚠️  Vision-based pricing capture failed, trying CSS selectors");
-            }
-        }
-        if (!pricingSectionPath) {
-            pricingSectionPath = await captureElementScreenshot(page, [
-                'section[class*="pricing"]',
-                'div[id*="pricing"]',
-                'section[id*="pricing"]',
-                '[data-section="pricing"]',
-                '[class*="price-section"]',
-                '[class*="pricing-section"]',
-                '[class*="pricing-table"]',
-                '[class*="price-card"]',
-                '[class*="pricing-card"]',
-                'section:has([class*="price-tier"])',
-                'main section:nth-of-type(2)', // Common position for pricing
-                'main section:nth-of-type(3)',
-            ], `${sanitizedUrl}-${timestamp}-pricing.png`, screenshotsDir, publicBase, "Pricing");
-        }
+        // Vision API temporarily disabled due to coordinate scaling issues
+        // TODO: Fix coordinate transformation between resized image and live page
+        console.log("⚠️  Vision API temporarily disabled - using CSS selectors only");
+        // Commented out until coordinate scaling is fixed:
+        // const visionDetectedSections = await detectSectionsWithVision(
+        //   fullPageScreenshot,
+        //   viewportWidth,
+        //   viewportHeight
+        // );
+        // Pricing section - Using CSS selectors only
+        const pricingSectionPath = await captureElementScreenshot(page, [
+            'section[class*="pricing"]',
+            'div[id*="pricing"]',
+            'section[id*="pricing"]',
+            '[data-section="pricing"]',
+            '[class*="price-section"]',
+            '[class*="pricing-section"]',
+            '[class*="pricing-table"]',
+            '[class*="price-card"]',
+            '[class*="pricing-card"]',
+            'section:has([class*="price-tier"])',
+            'main section:nth-of-type(2)', // Common position for pricing
+            'main section:nth-of-type(3)',
+        ], `${sanitizedUrl}-${timestamp}-pricing.png`, screenshotsDir, publicBase, "Pricing");
         if (pricingSectionPath)
             sectionScreenshots.pricing = pricingSectionPath;
-        // Social Proof section - Try Vision first, fall back to CSS selectors
-        let socialProofSectionPath;
-        if (visionDetectedSections?.socialProof) {
-            try {
-                socialProofSectionPath = await captureScreenshotFromCoords(page, visionDetectedSections.socialProof, `${sanitizedUrl}-${timestamp}-social-proof.png`, screenshotsDir, publicBase, "Social Proof");
-            }
-            catch (error) {
-                console.log("  ⚠️  Vision-based social proof capture failed, trying CSS selectors");
-            }
-        }
-        if (!socialProofSectionPath) {
-            socialProofSectionPath = await captureElementScreenshot(page, [
-                'section[class*="testimonial"]',
-                'div[id*="testimonials"]',
-                'section[id*="testimonials"]',
-                '[data-section="testimonials"]',
-                '[class*="customer-testimonials"]',
-                '[class*="reviews-section"]',
-                '[class*="testimonials-section"]',
-                'section:has([class*="review"])',
-                '[class*="social-proof"]',
-                '[class*="customer-stories"]',
-                'section:has([class*="rating"])',
-                'main section:nth-of-type(4)', // Often near bottom
-                'main section:nth-of-type(5)',
-            ], `${sanitizedUrl}-${timestamp}-social-proof.png`, screenshotsDir, publicBase, "Social Proof");
-        }
+        // Social Proof section - Using CSS selectors only
+        const socialProofSectionPath = await captureElementScreenshot(page, [
+            'section[class*="testimonial"]',
+            'div[id*="testimonials"]',
+            'section[id*="testimonials"]',
+            '[data-section="testimonials"]',
+            '[class*="customer-testimonials"]',
+            '[class*="reviews-section"]',
+            '[class*="testimonials-section"]',
+            'section:has([class*="review"])',
+            '[class*="social-proof"]',
+            '[class*="customer-stories"]',
+            'section:has([class*="rating"])',
+            'main section:nth-of-type(4)', // Often near bottom
+            'main section:nth-of-type(5)',
+        ], `${sanitizedUrl}-${timestamp}-social-proof.png`, screenshotsDir, publicBase, "Social Proof");
         if (socialProofSectionPath)
             sectionScreenshots.socialProof = socialProofSectionPath;
-        // Trust Signals section - Try Vision first, fall back to CSS selectors
-        let trustSignalsSectionPath;
-        if (visionDetectedSections?.trustSignals) {
-            try {
-                trustSignalsSectionPath = await captureScreenshotFromCoords(page, visionDetectedSections.trustSignals, `${sanitizedUrl}-${timestamp}-trust-signals.png`, screenshotsDir, publicBase, "Trust Signals");
-            }
-            catch (error) {
-                console.log("  ⚠️  Vision-based trust signals capture failed, trying CSS selectors");
-            }
-        }
-        if (!trustSignalsSectionPath) {
-            trustSignalsSectionPath = await captureElementScreenshot(page, [
-                'footer', // Footer often has trust badges
-                'section[class*="trust"]',
-                '[class*="security-section"]',
-                '[data-section="trust"]',
-                '[class*="guarantee-section"]',
-                '[class*="trust-badges"]',
-                '[class*="security-badges"]',
-                'section:has([class*="badge"])',
-                'div[class*="partners"]', // Partner logos = trust
-                'main section:last-of-type', // Often at the end
-            ], `${sanitizedUrl}-${timestamp}-trust-signals.png`, screenshotsDir, publicBase, "Trust Signals");
-        }
+        // Trust Signals section - Using CSS selectors only
+        const trustSignalsSectionPath = await captureElementScreenshot(page, [
+            'footer', // Footer often has trust badges
+            'section[class*="trust"]',
+            '[class*="security-section"]',
+            '[data-section="trust"]',
+            '[class*="guarantee-section"]',
+            '[class*="trust-badges"]',
+            '[class*="security-badges"]',
+            'section:has([class*="badge"])',
+            'div[class*="partners"]', // Partner logos = trust
+            'main section:last-of-type', // Often at the end
+        ], `${sanitizedUrl}-${timestamp}-trust-signals.png`, screenshotsDir, publicBase, "Trust Signals");
         if (trustSignalsSectionPath)
             sectionScreenshots.trustSignals = trustSignalsSectionPath;
-        // Marketing Elements section - Try Vision first, fall back to CSS selectors
-        let marketingSectionPath;
-        if (visionDetectedSections?.marketing) {
-            try {
-                marketingSectionPath = await captureScreenshotFromCoords(page, visionDetectedSections.marketing, `${sanitizedUrl}-${timestamp}-marketing.png`, screenshotsDir, publicBase, "Marketing Elements");
-            }
-            catch (error) {
-                console.log("  ⚠️  Vision-based marketing capture failed, trying CSS selectors");
-            }
-        }
-        if (!marketingSectionPath) {
-            marketingSectionPath = await captureElementScreenshot(page, [
-                'section:has([class*="cta"])',
-                '[class*="call-to-action-section"]',
-                '[data-section="cta"]',
-                '[class*="cta-section"]',
-                '[class*="hero"]:has(button)',
-                '[class*="conversion-section"]',
-                '[class*="action-section"]',
-                'section:has([class*="sign-up"])',
-                'section:has([class*="get-started"])',
-                'main section:first-of-type', // Hero often has CTAs
-            ], `${sanitizedUrl}-${timestamp}-marketing.png`, screenshotsDir, publicBase, "Marketing Elements");
-        }
+        // Marketing Elements section - Using CSS selectors only
+        const marketingSectionPath = await captureElementScreenshot(page, [
+            'section:has([class*="cta"])',
+            '[class*="call-to-action-section"]',
+            '[data-section="cta"]',
+            '[class*="cta-section"]',
+            '[class*="hero"]:has(button)',
+            '[class*="conversion-section"]',
+            '[class*="action-section"]',
+            'section:has([class*="sign-up"])',
+            'section:has([class*="get-started"])',
+            'main section:first-of-type', // Hero often has CTAs
+        ], `${sanitizedUrl}-${timestamp}-marketing.png`, screenshotsDir, publicBase, "Marketing Elements");
         if (marketingSectionPath)
             sectionScreenshots.marketing = marketingSectionPath;
-        // Features section - Try Vision first, fall back to CSS selectors
-        let featuresSectionPath;
-        if (visionDetectedSections?.features) {
-            try {
-                featuresSectionPath = await captureScreenshotFromCoords(page, visionDetectedSections.features, `${sanitizedUrl}-${timestamp}-features.png`, screenshotsDir, publicBase, "Features");
-            }
-            catch (error) {
-                console.log("  ⚠️  Vision-based features capture failed, trying CSS selectors");
-            }
-        }
-        if (!featuresSectionPath) {
-            featuresSectionPath = await captureElementScreenshot(page, [
-                'section[class*="features"]',
-                'div[id*="features"]',
-                'section[id*="features"]',
-                '[data-section="features"]',
-                '[class*="features-section"]',
-                '[class*="feature-list"]',
-                '[class*="product-features"]',
-                '[class*="key-features"]',
-                'section:has([class*="feature-card"])',
-                '[class*="benefits-section"]',
-                'main section:nth-of-type(2)', // Often 2nd section
-            ], `${sanitizedUrl}-${timestamp}-features.png`, screenshotsDir, publicBase, "Features");
-        }
+        // Features section - Using CSS selectors only
+        const featuresSectionPath = await captureElementScreenshot(page, [
+            'section[class*="features"]',
+            'div[id*="features"]',
+            'section[id*="features"]',
+            '[data-section="features"]',
+            '[class*="features-section"]',
+            '[class*="feature-list"]',
+            '[class*="product-features"]',
+            '[class*="key-features"]',
+            'section:has([class*="feature-card"])',
+            '[class*="benefits-section"]',
+            'main section:nth-of-type(2)', // Often 2nd section
+        ], `${sanitizedUrl}-${timestamp}-features.png`, screenshotsDir, publicBase, "Features");
         if (featuresSectionPath)
             sectionScreenshots.features = featuresSectionPath;
         // Detailed summary
