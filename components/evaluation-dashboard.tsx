@@ -83,7 +83,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
             <div className="w-full">
               <div className="rounded-lg overflow-hidden border border-black/10 dark:border-white/10 shadow-lg">
                 <img
-                  src={normalizedEvaluation.websiteSnapshot.heroScreenshotPath || normalizedEvaluation.websiteSnapshot.screenshotPath}
+                  src={normalizedEvaluation.websiteSnapshot.heroScreenshotBase64 || normalizedEvaluation.websiteSnapshot.heroScreenshotPath || normalizedEvaluation.websiteSnapshot.screenshotPath}
                   alt={normalizedEvaluation.websiteSnapshot.heroScreenshotPath ? "Website Header and Hero Section" : "Website Screenshot"}
                   className="w-full h-auto object-cover object-top"
                   style={{ maxHeight: '500px' }}
@@ -440,7 +440,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
             <div>
               <div className="rounded-xl overflow-hidden border-2 border-black/10 dark:border-white/10 shadow-2xl">
                 <img
-                  src={normalizedEvaluation.websiteSnapshot.screenshotPath}
+                  src={normalizedEvaluation.websiteSnapshot.heroScreenshotBase64 || normalizedEvaluation.websiteSnapshot.screenshotPath}
                   alt="Website Screenshot"
                   className="w-full h-auto"
                 />

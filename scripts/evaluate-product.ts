@@ -390,10 +390,11 @@ ${scrapedDataAppendix}
   ]);
   console.log("✅ All analyses completed");
 
-  if (!scrapedData.error) {
+    if (!scrapedData.error) {
     evaluation.websiteSnapshot = {
       screenshotPath: scrapedData.screenshotPath,
       heroScreenshotPath: scrapedData.heroScreenshotPath,
+      heroScreenshotBase64: scrapedData.heroScreenshotBase64, // Save base64 for reliable frontend rendering
       sectionScreenshots: scrapedData.sectionScreenshots,
       productName: productInfo.productName,
       price: productInfo.price,
