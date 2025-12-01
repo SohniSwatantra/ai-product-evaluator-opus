@@ -116,8 +116,8 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
               type="submit"
               disabled={isAnalyzing}
               className={cn(
-                "w-full py-4 rounded-xl font-semibold",
-                "bg-black text-white dark:bg-white dark:text-black",
+                "w-full py-4 rounded-2xl font-semibold text-lg",
+                "bg-[#459A9A] text-black",
                 "hover:opacity-90 transition-opacity",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
                 "flex items-center justify-center gap-2"
