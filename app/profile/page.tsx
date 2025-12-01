@@ -5,7 +5,7 @@ import { useUser } from "@stackframe/stack";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Mail, Calendar, TrendingUp, ExternalLink, Trash2, Loader2 } from "lucide-react";
+import { Mail, Calendar, TrendingUp, ExternalLink, Trash2, Loader2, Settings } from "lucide-react";
 import Link from "next/link";
 import { type ProductEvaluation } from "@/types";
 import { cn } from "@/lib/utils";
@@ -72,9 +72,9 @@ export default function ProfilePage() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 70) return "text-green-600 dark:text-green-400";
-    if (score >= 40) return "text-yellow-600 dark:text-yellow-400";
-    return "text-red-600 dark:text-red-400";
+    if (score >= 70) return "text-green-500";
+    if (score >= 40) return "text-yellow-500";
+    return "text-red-500";
   };
 
   const getScoreBgColor = (score: number) => {
@@ -91,36 +91,38 @@ export default function ProfilePage() {
     <BackgroundGlow>
       <Navbar />
       <main className="container mx-auto px-6 pt-32 pb-12">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-6">
           {/* User Info Card */}
-          <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
-            <div className="flex items-start gap-6">
-              {/* Avatar */}
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
-                {user.displayName?.[0]?.toUpperCase() || user.primaryEmail?.[0]?.toUpperCase() || "U"}
-              </div>
+          <div className="p-6 rounded-2xl border border-white/10 bg-black">
+            <div className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                {/* Avatar */}
+                <div className="w-16 h-16 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+                  {user.displayName?.[0]?.toUpperCase() || user.primaryEmail?.[0]?.toUpperCase() || "U"}
+                </div>
 
-              {/* User Details */}
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-black dark:text-white mb-2">
-                  {user.displayName || "User Profile"}
-                </h1>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <Mail className="w-4 h-4" />
-                    <span>{user.primaryEmail}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400">
-                    <Calendar className="w-4 h-4" />
-                    <span>Member since {new Date(user.createdAt || Date.now()).toLocaleDateString()}</span>
+                {/* User Details */}
+                <div>
+                  <h1 className="text-2xl font-bold text-white mb-1">
+                    {user.displayName || "User Profile"}
+                  </h1>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm text-neutral-400">
+                      <Mail className="w-3.5 h-3.5" />
+                      <span>{user.primaryEmail}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-neutral-400">
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>Member since {new Date(user.createdAt || Date.now()).toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Account Settings Link */}
+              {/* Account Settings Button */}
               <Link
                 href="/handler/account-settings"
-                className="px-4 py-2 rounded-lg border border-neutral-300 dark:border-neutral-600 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-black dark:text-white transition-colors"
+                className="px-4 py-2 rounded-lg border border-white/20 hover:bg-white/5 text-white transition-colors text-sm font-medium"
               >
                 Account Settings
               </Link>
@@ -128,31 +130,29 @@ export default function ProfilePage() {
           </div>
 
           {/* Evaluations Section */}
-          <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-6 h-6 text-black dark:text-white" />
-                <h2 className="text-2xl font-bold text-black dark:text-white">
-                  My Evaluations
-                </h2>
-                <span className="ml-2 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-semibold">
-                  {evaluations.length}
-                </span>
-              </div>
+          <div className="p-6 rounded-2xl border border-white/10 bg-black">
+            <div className="flex items-center gap-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-white" />
+              <h2 className="text-xl font-bold text-white">
+                My Evaluations
+              </h2>
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold">
+                {evaluations.length}
+              </span>
             </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
               </div>
             ) : evaluations.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-neutral-600 dark:text-neutral-400 mb-4">
+                <p className="text-neutral-400 mb-4">
                   No evaluations yet
                 </p>
                 <button
                   onClick={() => router.push("/")}
-                  className="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all"
+                  className="px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all text-sm"
                 >
                   Create Your First Evaluation
                 </button>
@@ -162,54 +162,55 @@ export default function ProfilePage() {
                 {evaluations.map((evaluation) => (
                   <div
                     key={evaluation.id}
-                    className="flex items-center gap-4 p-4 rounded-lg border border-black/10 dark:border-white/10 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
+                    className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-[#111] hover:border-white/20 transition-colors"
                   >
                     {/* URL */}
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-sm text-black dark:text-white truncate">
+                      <p className="font-mono text-sm text-white truncate">
                         {evaluation.url}
                       </p>
-                      <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+                      <p className="text-xs text-neutral-500 mt-1">
                         {new Date(evaluation.timestamp).toLocaleDateString()} at{" "}
                         {new Date(evaluation.timestamp).toLocaleTimeString()}
                       </p>
                     </div>
 
-                    {/* Overall Score */}
-                    <div className={cn("px-4 py-2 rounded-lg", getScoreBgColor(evaluation.overallScore))}>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">Score</p>
-                      <p className={cn("text-2xl font-bold", getScoreColor(evaluation.overallScore))}>
-                        {evaluation.overallScore}
-                      </p>
-                    </div>
+                    {/* Scores */}
+                    <div className="flex items-center gap-3">
+                      <div className={cn("px-3 py-1.5 rounded-lg min-w-[80px] text-center", getScoreBgColor(evaluation.overallScore))}>
+                        <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-0.5">Score</p>
+                        <p className={cn("text-lg font-bold leading-none", getScoreColor(evaluation.overallScore))}>
+                          {evaluation.overallScore}
+                        </p>
+                      </div>
 
-                    {/* Buying Intent */}
-                    <div className={cn("px-4 py-2 rounded-lg", getScoreBgColor(evaluation.buyingIntentProbability))}>
-                      <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">Intent</p>
-                      <p className={cn("text-2xl font-bold", getScoreColor(evaluation.buyingIntentProbability))}>
-                        {evaluation.buyingIntentProbability}%
-                      </p>
+                      <div className={cn("px-3 py-1.5 rounded-lg min-w-[80px] text-center", getScoreBgColor(evaluation.buyingIntentProbability))}>
+                        <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-0.5">Intent</p>
+                        <p className={cn("text-lg font-bold leading-none", getScoreColor(evaluation.buyingIntentProbability))}>
+                          {evaluation.buyingIntentProbability}%
+                        </p>
+                      </div>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 pl-2 border-l border-white/10">
                       <button
                         onClick={() => handleViewEvaluation(evaluation)}
-                        className="p-2 rounded-lg hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 transition-colors"
+                        className="p-2 rounded-lg hover:bg-blue-500/10 text-blue-400 transition-colors"
                         title="View Report"
                       >
-                        <ExternalLink className="w-5 h-5" />
+                        <ExternalLink className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteEvaluation(evaluation.id)}
                         disabled={deleting === evaluation.id}
-                        className="p-2 rounded-lg hover:bg-red-500/10 text-red-600 dark:text-red-400 transition-colors disabled:opacity-50"
+                        className="p-2 rounded-lg hover:bg-red-500/10 text-red-400 transition-colors disabled:opacity-50"
                         title="Delete"
                       >
                         {deleting === evaluation.id ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4" />
                         )}
                       </button>
                     </div>
