@@ -75,6 +75,7 @@ export interface SectionRecommendation {
 export interface WebsiteSnapshot {
   screenshotPath: string;
   heroScreenshotPath?: string; // Optional for backward compatibility with old evaluations
+  heroScreenshotBase64?: string; // Optional base64 fallback for reliable rendering
   sectionScreenshots?: SectionScreenshots; // Section-specific screenshots
   productName: string;
   price: string;
