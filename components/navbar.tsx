@@ -1,19 +1,24 @@
 "use client";
 
-import { Moon, Sun, Brain, User, LogOut } from "lucide-react";
+import { Moon, Sun, Brain, User, LogOut, Settings, UserCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Menu, MenuItem, HoveredLink } from "@/components/ui/navbar-menu";
 import { useUser } from "@stackframe/stack";
 import { useRouter } from "next/navigation";
+import { useOutsideClick } from "@/hooks/use-outside-click";
 
 export function Navbar() {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const [active, setActive] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const user = useUser();
   const router = useRouter();
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useOutsideClick(userMenuRef, () => setIsUserMenuOpen(false));
 
   useEffect(() => {
     setMounted(true);
@@ -29,6 +34,7 @@ export function Navbar() {
   const handleSignOut = async () => {
     await user?.signOut();
     router.push("/");
+    setIsUserMenuOpen(false);
   };
 
   return (
@@ -57,34 +63,58 @@ export function Navbar() {
 
         {/* Auth Buttons / User Menu */}
         {user ? (
-          <MenuItem setActive={setActive} active={active} item={
-            <div className="flex items-center gap-3">
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none"
+            >
               <div className="w-8 h-8 rounded-full bg-[#4A044E]/10 flex items-center justify-center text-[#4A044E] text-sm font-semibold">
                 {user.displayName?.[0]?.toUpperCase() || user.primaryEmail?.[0]?.toUpperCase() || "U"}
               </div>
               <span className="text-sm font-medium text-[#4A044E]">{user.displayName || "Account"}</span>
-            </div>
-          }>
-            <div className="flex flex-col space-y-4 text-sm w-48">
-              <div className="px-3 py-2 border-b border-black/10 dark:border-white/10">
-                <p className="font-semibold text-black dark:text-white">{user.displayName || "User"}</p>
-                <p className="text-xs text-neutral-600 dark:text-neutral-400">{user.primaryEmail}</p>
-              </div>
-              <HoveredLink href="/profile">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  <span>My Profile</span>
+            </button>
+
+            {isUserMenuOpen && (
+              <div className="absolute right-0 top-full mt-4 w-64 rounded-xl bg-[#111111] border border-white/10 shadow-2xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-4 border-b border-white/10">
+                  <p className="font-medium text-white">{user.displayName || "User"}</p>
+                  <p className="text-xs text-neutral-400 mt-1">{user.primaryEmail}</p>
                 </div>
-              </HoveredLink>
-              <button
-                onClick={handleSignOut}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-md text-left text-red-600 dark:text-red-400"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </MenuItem>
+                
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      router.push("/profile");
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    <UserCircle className="w-4 h-4" />
+                    <span>My Profile</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      router.push("/handler/account-settings");
+                      setIsUserMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Account Settings</span>
+                  </button>
+                  
+                  <button
+                    onClick={handleSignOut}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors mt-1"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             <a

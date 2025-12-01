@@ -201,102 +201,90 @@ export default function Home() {
                   </>
                 }
               >
-                <div className="w-full h-full bg-white dark:bg-neutral-900 rounded-2xl p-8">
-                  <div className="space-y-6">
+                <div className="w-full h-full bg-[#111111] rounded-2xl p-8 border border-white/10">
+                  <div className="space-y-8">
                     {/* Example Product Header */}
-                    <div className="text-center pb-4 border-b border-black/10 dark:border-white/10">
-                      <h3 className="text-2xl font-bold text-black dark:text-white mb-2">
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold text-white mb-2">
                         Sample Analysis Result
                       </h3>
-                      <p className="text-sm text-neutral-600 dark:text-neutral-400 font-mono mb-3">
+                      <p className="text-sm text-neutral-400 font-mono mb-4">
                         example.com/premium-wireless-headphones
                       </p>
-                      <div className="flex items-center justify-center gap-4 text-xs">
-                        <span className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
+                      <div className="flex items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
+                        <span className="px-4 py-1.5 rounded-full bg-[#1E293B] text-[#60A5FA] border border-[#334155]">
                           Target: Female, 25-34, Medium Income
                         </span>
-                        <span className="px-3 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 font-semibold">
-                          🟢 HIGH INTENT
+                        <span className="px-4 py-1.5 rounded-full bg-[#14532D] text-[#4ADE80] border border-[#166534] flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
+                          HIGH INTENT
                         </span>
                       </div>
                     </div>
 
                     {/* Score Cards */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-6 rounded-xl border-2 border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80">
-                        <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Overall Score</h4>
-                        <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
-                          78<span className="text-xl">/100</span>
+                    <div className="grid grid-cols-3 gap-4">
+                      {/* Overall Score */}
+                      <div className="p-5 rounded-xl bg-black border border-white/10">
+                        <h4 className="text-xs font-medium text-neutral-400 mb-2">Overall Score</h4>
+                        <div className="text-4xl font-bold text-[#4ADE80] mb-3">
+                          78<span className="text-lg text-neutral-500 font-normal">/100</span>
                         </div>
-                        <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-600 dark:bg-green-400" style={{ width: '78%' }} />
+                        <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#4ADE80]" style={{ width: '78%' }} />
                         </div>
                       </div>
 
-                      <div className="p-6 rounded-xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5">
-                        <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Buying Intent</h4>
-                        <div className="text-4xl font-bold text-green-600 dark:text-green-400 mb-2">
-                          72<span className="text-xl">%</span>
+                      {/* Human Buying Intent */}
+                      <div className="p-5 rounded-xl bg-[#1F1028] border border-[#581C87]">
+                        <h4 className="text-xs font-medium text-[#E9D5FF] mb-2">Human Buying Intent</h4>
+                        <div className="text-4xl font-bold text-[#C084FC] mb-3">
+                          72<span className="text-lg text-[#7E22CE] font-normal">%</span>
                         </div>
-                        <div className="w-full h-2 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-600 dark:bg-green-400" style={{ width: '72%' }} />
+                        <div className="w-full h-1.5 bg-[#3B0764] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#C084FC]" style={{ width: '72%' }} />
+                        </div>
+                      </div>
+
+                      {/* Agent Experience */}
+                      <div className="p-5 rounded-xl bg-[#0F172A] border border-[#1E40AF]">
+                        <h4 className="text-xs font-medium text-[#BFDBFE] mb-2">Agent Experience</h4>
+                        <div className="text-4xl font-bold text-[#FACC15] mb-3">
+                          65<span className="text-lg text-[#1D4ED8] font-normal">%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-[#172554] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#FACC15]" style={{ width: '65%' }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SSR Distribution */}
+                    <div className="p-6 rounded-xl bg-[#1A1A1A] border border-white/5">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-sm font-semibold text-white">SSR Distribution</h4>
+                        <span className="text-xs text-neutral-500">Confidence: 92%</span>
+                      </div>
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="p-3 rounded-lg bg-[#0F0F0F] text-center border border-white/5">
+                          <div className="text-xl font-bold text-[#4ADE80] mb-0.5">45%</div>
+                          <div className="text-[10px] text-neutral-500 uppercase tracking-wide">High SSR</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-[#0F0F0F] text-center border border-white/5">
+                          <div className="text-xl font-bold text-[#FACC15] mb-0.5">35%</div>
+                          <div className="text-[10px] text-neutral-500 uppercase tracking-wide">Medium SSR</div>
+                        </div>
+                        <div className="p-3 rounded-lg bg-[#0F0F0F] text-center border border-white/5">
+                          <div className="text-xl font-bold text-[#F87171] mb-0.5">20%</div>
+                          <div className="text-[10px] text-neutral-500 uppercase tracking-wide">Low SSR</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Sample Factors */}
-                    <div className="space-y-3">
-                      <h4 className="text-lg font-semibold text-black dark:text-white">Evaluation Factors</h4>
-
-                      <div className="p-4 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-900">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-                            <span className="text-sm font-semibold text-black dark:text-white">Social Proof</span>
-                          </div>
-                          <div className="px-2 py-1 rounded-full text-xs font-semibold text-green-600 dark:text-green-400 bg-green-500/10">
-                            85/100
-                          </div>
-                        </div>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Strong ratings resonate well with 25-34 age group</p>
-                      </div>
-
-                      <div className="p-4 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-900">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <Minus className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
-                            <span className="text-sm font-semibold text-black dark:text-white">Pricing</span>
-                          </div>
-                          <div className="px-2 py-1 rounded-full text-xs font-semibold text-yellow-600 dark:text-yellow-400 bg-yellow-500/10">
-                            68/100
-                          </div>
-                        </div>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Competitive pricing with room for optimization</p>
-                      </div>
-
-                      <div className="p-4 rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-neutral-900">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-                            <span className="text-sm font-semibold text-black dark:text-white">Marketing Elements</span>
-                          </div>
-                          <div className="px-2 py-1 rounded-full text-xs font-semibold text-red-600 dark:text-red-400 bg-red-500/10">
-                            45/100
-                          </div>
-                        </div>
-                        <p className="text-xs text-neutral-600 dark:text-neutral-400">Reduce aggressive marketing tactics</p>
-                      </div>
-                    </div>
-
-                    {/* Sample Recommendation */}
-                    <div className="p-4 rounded-xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-4 h-4 text-black dark:text-white" />
-                        <h4 className="text-sm font-semibold text-black dark:text-white">Demographic-Tailored Recommendation</h4>
-                      </div>
-                      <p className="text-xs text-neutral-700 dark:text-neutral-300">
-                        Highlight peer reviews from similar demographics (females 25-34) to increase trust and conversion
-                      </p>
+                    {/* Evaluation Factors Header */}
+                    <div>
+                      <h4 className="text-lg font-semibold text-white mb-4">Evaluation Factors</h4>
+                      <div className="w-full h-12 bg-[#1A1A1A] rounded-lg border border-white/5 animate-pulse"></div>
                     </div>
                   </div>
                 </div>
