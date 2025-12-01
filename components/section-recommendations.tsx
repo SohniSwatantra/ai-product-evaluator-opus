@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Lightbulb, TrendingUp, Image as ImageIcon } from "lucide-react";
+import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Lightbulb, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SectionRecommendation } from "@/types";
 
@@ -48,7 +48,6 @@ interface SectionCardProps {
 
 function SectionCard({ section }: SectionCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
-  const [imageZoomed, setImageZoomed] = useState(false);
 
   // Determine color scheme based on score
   const getScoreColor = (score: number) => {
@@ -146,12 +145,6 @@ function SectionCard({ section }: SectionCardProps) {
                   <CheckCircle2 className="w-4 h-4" />
                   {section.recommendations.length} recommendations
                 </span>
-                {section.screenshotPath && (
-                  <span className="flex items-center gap-1">
-                    <ImageIcon className="w-4 h-4" />
-                    Screenshot available
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -171,45 +164,6 @@ function SectionCard({ section }: SectionCardProps) {
       {isExpanded && (
         <div className="border-t border-neutral-200 dark:border-neutral-800">
           <div className="p-5 space-y-5">
-            {/* Screenshot */}
-            {section.screenshotPath && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
-                  <ImageIcon className="w-4 h-4" />
-                  Section Screenshot
-                  {section.isFallbackScreenshot && (
-                    <span className="ml-2 px-2 py-0.5 rounded-full text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700">
-                      Overview
-                    </span>
-                  )}
-                </div>
-                {section.isFallbackScreenshot && (
-                  <div className="p-2 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-                    <p className="text-xs text-yellow-800 dark:text-yellow-300">
-                      ⚠️ Specific section screenshot unavailable - showing page overview instead
-                    </p>
-                  </div>
-                )}
-                <div
-                  className={cn(
-                    "rounded-lg overflow-hidden border-2 border-neutral-200 dark:border-neutral-700 cursor-zoom-in transition-all",
-                    imageZoomed && "cursor-zoom-out scale-105 shadow-2xl"
-                  )}
-                  onClick={() => setImageZoomed(!imageZoomed)}
-                >
-                  <img
-                    src={section.screenshotPath}
-                    alt={`${section.section} screenshot`}
-                    className="w-full h-auto"
-                    style={{ maxHeight: imageZoomed ? "none" : "300px", objectFit: "cover" }}
-                  />
-                </div>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 text-center italic">
-                  Click to {imageZoomed ? "zoom out" : "zoom in"}
-                </p>
-              </div>
-            )}
-
             {/* Issues Found */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
