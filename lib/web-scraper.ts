@@ -158,6 +158,28 @@ function correctCoordinateBounds(
 }
 
 /**
+ * Scroll down the page to trigger lazy loading
+ */
+async function autoScroll(page: Page) {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      let totalHeight = 0;
+      const distance = 100;
+      const timer = setInterval(() => {
+        const scrollHeight = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        totalHeight += distance;
+
+        if (totalHeight >= scrollHeight || totalHeight > 15000) { // Limit to 15000px
+          clearInterval(timer);
+          resolve();
+        }
+      }, 50); // Faster scroll
+    });
+  });
+}
+
+/**
  * Use Claude Vision API to detect section coordinates from a full-page screenshot
  */
 async function detectSectionsWithVision(
@@ -967,27 +989,78 @@ export async function scrapeWebsite(
     // Hero section (already captured above)
     sectionScreenshots.hero = formatPublicPath(publicBase, heroFilename);
 
+    // Scroll to bottom to ensure all lazy loaded content is visible
+    console.log("📜 Scrolling to trigger lazy loading...");
+    await autoScroll(page);
+    
+    // Scroll back to top
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(1000);
+
     // Try Vision API first for intelligent section detection
     const fullPageScreenshot = await page.screenshot({
       fullPage: true,
       type: "png",
     });
 
-    // Vision API temporarily disabled due to coordinate scaling issues
-    // TODO: Fix coordinate transformation between resized image and live page
-    console.log("⚠️  Vision API temporarily disabled - using CSS selectors only");
+    // Vision API detection
+    let visionDetectedSections: Record<string, any> | null = null;
+    try {
+      visionDetectedSections = await detectSectionsWithVision(
+        fullPageScreenshot,
+        viewportWidth,
+        viewportHeight
+      );
+    } catch (err) {
+      console.warn("⚠️ Vision API detection failed, falling back to selectors:", err);
+    }
 
-    // Commented out until coordinate scaling is fixed:
-    // const visionDetectedSections = await detectSectionsWithVision(
-    //   fullPageScreenshot,
-    //   viewportWidth,
-    //   viewportHeight
-    // );
+    // Helper to capture section (try Vision first, then selectors)
+    const captureSection = async (
+      key: keyof SectionScreenshotData,
+      name: string,
+      selectors: string[],
+      filenameSuffix: string
+    ) => {
+      let path: string | undefined;
+      const filename = `${sanitizedUrl}-${timestamp}-${filenameSuffix}.png`;
 
-    // Pricing section - Using CSS selectors only
-    const pricingSectionPath = await captureElementScreenshot(
-      page,
-      [
+      // 1. Try Vision API result
+      if (visionDetectedSections && visionDetectedSections[key]) {
+        try {
+          path = await captureScreenshotFromCoords(
+            page!, // Assert non-null
+            visionDetectedSections[key],
+            filename,
+            screenshotsDir,
+            publicBase,
+            name
+          );
+        } catch (e) {
+          console.log(`  ⚠️ Vision capture failed for ${name}, falling back to selectors`);
+        }
+      }
+
+      // 2. Fallback to CSS selectors
+      if (!path) {
+        path = await captureElementScreenshot(
+          page!,
+          selectors,
+          filename,
+          screenshotsDir,
+          publicBase,
+          name
+        );
+      }
+
+      if (path) {
+        // @ts-ignore - Dynamic key assignment
+        sectionScreenshots[key] = path;
+      }
+    };
+
+    // Pricing
+    await captureSection('pricing', 'Pricing', [
         'section[class*="pricing"]',
         'div[id*="pricing"]',
         'section[id*="pricing"]',
@@ -1000,18 +1073,10 @@ export async function scrapeWebsite(
         'section:has([class*="price-tier"])',
         'main section:nth-of-type(2)', // Common position for pricing
         'main section:nth-of-type(3)',
-      ],
-      `${sanitizedUrl}-${timestamp}-pricing.png`,
-      screenshotsDir,
-      publicBase,
-      "Pricing"
-    );
-    if (pricingSectionPath) sectionScreenshots.pricing = pricingSectionPath;
+    ], 'pricing');
 
-    // Social Proof section - Using CSS selectors only
-    const socialProofSectionPath = await captureElementScreenshot(
-      page,
-      [
+    // Social Proof
+    await captureSection('socialProof', 'Social Proof', [
         'section[class*="testimonial"]',
         'div[id*="testimonials"]',
         'section[id*="testimonials"]',
@@ -1025,18 +1090,10 @@ export async function scrapeWebsite(
         'section:has([class*="rating"])',
         'main section:nth-of-type(4)', // Often near bottom
         'main section:nth-of-type(5)',
-      ],
-      `${sanitizedUrl}-${timestamp}-social-proof.png`,
-      screenshotsDir,
-      publicBase,
-      "Social Proof"
-    );
-    if (socialProofSectionPath) sectionScreenshots.socialProof = socialProofSectionPath;
+    ], 'social-proof');
 
-    // Trust Signals section - Using CSS selectors only
-    const trustSignalsSectionPath = await captureElementScreenshot(
-      page,
-      [
+    // Trust Signals
+    await captureSection('trustSignals', 'Trust Signals', [
         'footer', // Footer often has trust badges
         'section[class*="trust"]',
         '[class*="security-section"]',
@@ -1047,18 +1104,10 @@ export async function scrapeWebsite(
         'section:has([class*="badge"])',
         'div[class*="partners"]', // Partner logos = trust
         'main section:last-of-type', // Often at the end
-      ],
-      `${sanitizedUrl}-${timestamp}-trust-signals.png`,
-      screenshotsDir,
-      publicBase,
-      "Trust Signals"
-    );
-    if (trustSignalsSectionPath) sectionScreenshots.trustSignals = trustSignalsSectionPath;
+    ], 'trust-signals');
 
-    // Marketing Elements section - Using CSS selectors only
-    const marketingSectionPath = await captureElementScreenshot(
-      page,
-      [
+    // Marketing Elements
+    await captureSection('marketing', 'Marketing Elements', [
         'section:has([class*="cta"])',
         '[class*="call-to-action-section"]',
         '[data-section="cta"]',
@@ -1069,36 +1118,22 @@ export async function scrapeWebsite(
         'section:has([class*="sign-up"])',
         'section:has([class*="get-started"])',
         'main section:first-of-type', // Hero often has CTAs
-      ],
-      `${sanitizedUrl}-${timestamp}-marketing.png`,
-      screenshotsDir,
-      publicBase,
-      "Marketing Elements"
-    );
-    if (marketingSectionPath) sectionScreenshots.marketing = marketingSectionPath;
+    ], 'marketing');
 
-    // Features section - Using CSS selectors only
-    const featuresSectionPath = await captureElementScreenshot(
-      page,
-      [
+    // Features
+    await captureSection('features', 'Features', [
         'section[class*="features"]',
-          'div[id*="features"]',
-          'section[id*="features"]',
-          '[data-section="features"]',
-          '[class*="features-section"]',
-          '[class*="feature-list"]',
-          '[class*="product-features"]',
-          '[class*="key-features"]',
-          'section:has([class*="feature-card"])',
-          '[class*="benefits-section"]',
-          'main section:nth-of-type(2)', // Often 2nd section
-        ],
-        `${sanitizedUrl}-${timestamp}-features.png`,
-        screenshotsDir,
-        publicBase,
-        "Features"
-      );
-    if (featuresSectionPath) sectionScreenshots.features = featuresSectionPath;
+        'div[id*="features"]',
+        'section[id*="features"]',
+        '[data-section="features"]',
+        '[class*="features-section"]',
+        '[class*="feature-list"]',
+        '[class*="product-features"]',
+        '[class*="key-features"]',
+        'section:has([class*="feature-card"])',
+        '[class*="benefits-section"]',
+        'main section:nth-of-type(2)', // Often 2nd section
+    ], 'features');
 
     // Detailed summary
     console.log(`✅ Screenshot capture complete:`);
