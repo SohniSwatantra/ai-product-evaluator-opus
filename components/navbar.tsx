@@ -32,11 +32,11 @@ export function Navbar() {
   };
 
   return (
-    <div className="fixed top-10 inset-x-0 max-w-4xl mx-auto z-50 px-4">
+    <div className="fixed top-10 inset-x-0 max-w-5xl mx-auto z-50 px-4">
       <Menu setActive={setActive}>
         <div className="flex items-center gap-2 px-2">
-          <Brain className="w-5 h-5 text-black" />
-          <span className="font-semibold text-black">AI Product Evaluator</span>
+          <Brain className="w-5 h-5 text-[#4A044E]" />
+          <span className="font-bold font-mono text-[#4A044E] text-lg">AI Product Evaluator</span>
         </div>
 
         <MenuItem setActive={setActive} active={active} item="Features">
@@ -58,11 +58,11 @@ export function Navbar() {
         {/* Auth Buttons / User Menu */}
         {user ? (
           <MenuItem setActive={setActive} active={active} item={
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-semibold">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#4A044E]/10 flex items-center justify-center text-[#4A044E] text-sm font-semibold">
                 {user.displayName?.[0]?.toUpperCase() || user.primaryEmail?.[0]?.toUpperCase() || "U"}
               </div>
-              <span className="text-sm font-medium">{user.displayName || "Account"}</span>
+              <span className="text-sm font-medium text-[#4A044E]">{user.displayName || "Account"}</span>
             </div>
           }>
             <div className="flex flex-col space-y-4 text-sm w-48">
@@ -113,9 +113,9 @@ export function Navbar() {
           {!mounted ? (
             <span className="w-4 h-4" />
           ) : currentTheme === "dark" ? (
-            <Sun className="w-4 h-4 text-black" />
+            <Sun className="w-4 h-4 text-[#4A044E]" />
           ) : (
-            <Moon className="w-4 h-4 text-black" />
+            <Moon className="w-4 h-4 text-[#4A044E]" />
           )}
         </button>
       </Menu>
