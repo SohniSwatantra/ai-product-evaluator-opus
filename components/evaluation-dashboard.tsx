@@ -93,7 +93,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
 
             {/* Product Name */}
             <div className="flex-1">
-              <h3 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Product Name</h3>
+              <h3 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Hero Section - Headline</h3>
               <p className="text-2xl font-bold text-black dark:text-white">{normalizedEvaluation.websiteSnapshot.productName}</p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
           className="mt-4"
         />
         <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
-          Based on the three-tier anchor system from the research paper "What Is Your AI Agent Buying?", this represents the likelihood that your target demographic would purchase this product.
+          Based on the three-tier anchor system that we developed based on research, this represents the likelihood that your target demographic would purchase this product
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
         >
           <div className="p-8 rounded-2xl border-2 border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
             <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Overall Score</h3>
-            <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">Factor-based analysis (Paper 1)</p>
+            <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">Factor-based analysis</p>
             <div className={cn("text-6xl font-bold mb-2", scoreColor)}>
               {normalizedEvaluation.overallScore}
               <span className="text-2xl">/100</span>
@@ -202,7 +202,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
           <div className="p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
             <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Buying Intent Probability</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">
-              {normalizedEvaluation.ssrScore ? "SSR methodology (Paper 2) - 90% human correlation" : "Factor-based estimate"}
+              {normalizedEvaluation.ssrScore ? "SSR methodology - 90% human correlation" : "Factor-based estimate"}
             </p>
             <div className={cn("text-6xl font-bold mb-2", probabilityColor)}>
               {normalizedEvaluation.buyingIntentProbability}
@@ -266,12 +266,12 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
             <div className="p-4 rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10">
               <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">Factor-Based Score</p>
               <p className="text-3xl font-bold text-black dark:text-white">{normalizedEvaluation.methodologyComparison.factorScore}</p>
-              <p className="text-xs text-neutral-500 mt-1">Paper 1: Product analysis</p>
+              <p className="text-xs text-neutral-500 mt-1">Product analysis</p>
             </div>
             <div className="p-4 rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10">
               <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">SSR Score</p>
               <p className="text-3xl font-bold text-black dark:text-white">{normalizedEvaluation.methodologyComparison.ssrScore}</p>
-              <p className="text-xs text-neutral-500 mt-1">Paper 2: Human behavior</p>
+              <p className="text-xs text-neutral-500 mt-1">Human behavior</p>
             </div>
             <div className="p-4 rounded-lg bg-white dark:bg-neutral-900 border border-black/10 dark:border-white/10">
               <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-1">Confidence Level</p>
@@ -295,7 +295,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
 
           <div className="mt-4 p-4 rounded-lg bg-white dark:bg-neutral-900 border border-blue-200 dark:border-blue-800">
             <p className="text-sm text-blue-900 dark:text-blue-200">
-              <span className="font-semibold">Research-Based:</span> This comparison combines insights from "What Is Your AI Agent Buying?" (factor analysis) and "LLMs Reproduce Human Purchase Intent" (90% human correlation via SSR).
+              <span className="font-semibold">Research-Based:</span> This comparison combines insights from our in depth research on AI Agent behaviour buying and ability of LLM's to reproduce human purchase intent characteristics
             </p>
           </div>
         </div>
@@ -422,7 +422,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
         <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">{normalizedEvaluation.demographicImpact}</p>
         <div className="mt-4 p-4 rounded-lg bg-white dark:bg-neutral-900 border border-blue-200 dark:border-blue-800">
           <p className="text-sm text-blue-900 dark:text-blue-200">
-            <span className="font-semibold">Research-Based:</span> This analysis is based on the methodology from "What Is Your AI Agent Buying?" which found that demographics significantly influence purchase intent across different product categories.
+            <span className="font-semibold">Research-Based:</span> This analysis is based on the methodology from our research which found that demographics significantly influence purchase intent across different product categories.
           </p>
         </div>
       </div>
