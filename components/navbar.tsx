@@ -45,21 +45,19 @@ export function Navbar() {
           <span className="font-bold font-mono text-[#4A044E] text-lg">AI Product Evaluator</span>
         </div>
 
-        <MenuItem setActive={setActive} active={active} item="Features">
-          <div className="flex flex-col space-y-4 text-sm">
-            <HoveredLink href="#features">AI Analysis</HoveredLink>
-            <HoveredLink href="#features">Buying Intent</HoveredLink>
-            <HoveredLink href="#features">Multi-Factor Scoring</HoveredLink>
-            <HoveredLink href="#features">Recommendations</HoveredLink>
-          </div>
-        </MenuItem>
+        <a
+          href="#features"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity"
+        >
+          Features
+        </a>
 
-        <MenuItem setActive={setActive} active={active} item="About">
-          <div className="flex flex-col space-y-4 text-sm">
-            <HoveredLink href="https://arxiv.org/abs/2508.02630" target="_blank">Research Paper</HoveredLink>
-            <HoveredLink href="#how-it-works">How It Works</HoveredLink>
-          </div>
-        </MenuItem>
+        <a
+          href="/about"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity"
+        >
+          About
+        </a>
 
         {/* Auth Buttons / User Menu */}
         {user ? (
