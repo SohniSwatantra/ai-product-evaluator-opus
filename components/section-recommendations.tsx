@@ -15,10 +15,10 @@ export function SectionRecommendations({ sections }: SectionRecommendationsProps
   }
 
   return (
-    <div className="p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
-      <div className="flex items-center gap-3 mb-6">
-        <Lightbulb className="w-7 h-7 text-purple-600 dark:text-purple-400" />
-        <h3 className="text-2xl font-semibold text-black dark:text-white">
+    <div className="p-4 sm:p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
+      <div className="flex items-center gap-2 sm:gap-3 mb-6">
+        <Lightbulb className="w-5 h-5 sm:w-7 sm:h-7 text-purple-600 dark:text-purple-400" />
+        <h3 className="text-xl sm:text-2xl font-semibold text-black dark:text-white">
           Section-by-Section Analysis
         </h3>
       </div>
@@ -107,43 +107,43 @@ function SectionCard({ section }: SectionCardProps) {
     )}>
       {/* Header - Always Visible */}
       <div
-        className="p-5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
+        className="p-3 sm:p-5 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3 flex-1">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
+          <div className="flex items-start gap-2 sm:gap-3 flex-1">
             {/* Score Badge */}
             <div className={cn(
-              "px-4 py-2 rounded-lg text-center flex-shrink-0",
+              "px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg text-center flex-shrink-0",
               scoreColors.bg
             )}>
-              <div className={cn("text-2xl font-bold", scoreColors.text)}>
+              <div className={cn("text-xl sm:text-2xl font-bold", scoreColors.text)}>
                 {section.score}
               </div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">Score</div>
+              <div className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-400">Score</div>
             </div>
 
             {/* Section Info */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <h4 className="text-lg font-semibold text-black dark:text-white">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                <h4 className="text-base sm:text-lg font-semibold text-black dark:text-white">
                   {section.section}
                 </h4>
                 <span className={cn(
-                  "px-2 py-1 rounded-full text-xs font-bold uppercase border",
+                  "px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold uppercase border w-fit",
                   impactBadge.className
                 )}>
                   {impactBadge.text}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
+              <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                 <span className="flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                   {section.issues.length} issues
                 </span>
                 <span className="flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {section.recommendations.length} recommendations
+                  <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  {section.recommendations.length} recs
                 </span>
               </div>
             </div>
@@ -163,7 +163,7 @@ function SectionCard({ section }: SectionCardProps) {
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-neutral-200 dark:border-neutral-800">
-          <div className="p-5 space-y-5">
+          <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
             {/* Issues Found */}
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">

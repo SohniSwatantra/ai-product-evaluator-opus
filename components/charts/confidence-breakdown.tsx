@@ -24,24 +24,24 @@ export function ConfidenceBreakdown({ ssrConfidence, ssrMarginConfidence }: Conf
 
   return (
     <div className="space-y-4">
-      <ResponsiveContainer width="100%" height={200}>
+      <ResponsiveContainer width="100%" height={180}>
         <BarChart
           data={chartData}
           layout="vertical"
-          margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+          margin={{ top: 10, right: 20, left: 10, bottom: 30 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-neutral-700" />
           <XAxis
             type="number"
             domain={[0, 100]}
-            tick={{ fill: "#6b7280", fontSize: 11 }}
-            label={{ value: "Confidence (%)", position: "insideBottom", offset: -10, fill: "#6b7280" }}
+            tick={{ fill: "#6b7280", fontSize: 10 }}
+            label={{ value: "Confidence (%)", position: "insideBottom", offset: -5, fill: "#6b7280", fontSize: 10 }}
           />
           <YAxis
             type="category"
             dataKey="name"
-            tick={{ fill: "#6b7280", fontSize: 12 }}
-            width={90}
+            tick={{ fill: "#6b7280", fontSize: 10 }}
+            width={70}
           />
           <Tooltip
             contentStyle={{
@@ -63,8 +63,8 @@ export function ConfidenceBreakdown({ ssrConfidence, ssrMarginConfidence }: Conf
       </ResponsiveContainer>
 
       {/* Explanation */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-        <div className="p-3 rounded-lg bg-[#b3ffcb]/10 border border-[#b3ffcb]/30">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-[10px] sm:text-xs">
+        <div className="p-2 sm:p-3 rounded-lg bg-[#b3ffcb]/10 border border-[#b3ffcb]/30">
           <div className="font-semibold text-[#4d0026] dark:text-[#b3ffcb] mb-1">
             Entropy Confidence
           </div>
@@ -73,7 +73,7 @@ export function ConfidenceBreakdown({ ssrConfidence, ssrMarginConfidence }: Conf
           </div>
         </div>
 
-        <div className="p-3 rounded-lg bg-[#66ff96]/10 border border-[#66ff96]/30">
+        <div className="p-2 sm:p-3 rounded-lg bg-[#66ff96]/10 border border-[#66ff96]/30">
           <div className="font-semibold text-[#4d0026] dark:text-[#66ff96] mb-1">
             Margin Confidence
           </div>
@@ -82,7 +82,7 @@ export function ConfidenceBreakdown({ ssrConfidence, ssrMarginConfidence }: Conf
           </div>
         </div>
 
-        <div className="p-3 rounded-lg bg-[#4d0026]/10 border border-[#4d0026]/30">
+        <div className="p-2 sm:p-3 rounded-lg bg-[#4d0026]/10 border border-[#4d0026]/30">
           <div className="font-semibold text-[#4d0026] dark:text-white mb-1">
             Combined Confidence
           </div>

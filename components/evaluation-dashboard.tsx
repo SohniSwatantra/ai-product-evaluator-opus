@@ -44,7 +44,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
     <>
       <div id="evaluation-report" className="space-y-4 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <button
           onClick={onNewAnalysis}
           className="flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
@@ -159,7 +159,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       </div>
 
       {/* Purchase Intent Anchor - PROMINENT DISPLAY */}
-      <div className="p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-gradient-to-br from-white to-neutral-50 dark:from-black dark:to-neutral-900 backdrop-blur-sm">
+      <div className="p-4 sm:p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-gradient-to-br from-white to-neutral-50 dark:from-black dark:to-neutral-900 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-4">
           <Target className="w-6 h-6 text-black dark:text-white" />
           <h3 className="text-2xl font-semibold text-black dark:text-white">Purchase Intent Prediction</h3>
@@ -180,10 +180,10 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
           glowColor="rgba(34, 197, 94, 0.3)"
           shadowIntensity="medium"
         >
-          <div className="p-8 rounded-2xl border-2 border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 rounded-2xl border-2 border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
             <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Overall Score</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">Factor-based analysis</p>
-            <div className={cn("text-6xl font-bold mb-2", scoreColor)}>
+            <div className={cn("text-4xl sm:text-6xl font-bold mb-2", scoreColor)}>
               {normalizedEvaluation.overallScore}
               <span className="text-2xl">/100</span>
             </div>
@@ -200,12 +200,12 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
           glowColor="rgba(59, 130, 246, 0.3)"
           shadowIntensity="medium"
         >
-          <div className="p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
             <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Buying Intent Probability</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">
               {normalizedEvaluation.ssrScore ? "SSR methodology - 90% human correlation" : "Factor-based estimate"}
             </p>
-            <div className={cn("text-6xl font-bold mb-2", probabilityColor)}>
+            <div className={cn("text-4xl sm:text-6xl font-bold mb-2", probabilityColor)}>
               {normalizedEvaluation.buyingIntentProbability}
               <span className="text-2xl">%</span>
             </div>
@@ -234,25 +234,27 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       {/* Methodology Comparison - NEW! */}
       {normalizedEvaluation.methodologyComparison && (
         <div className={cn(
-          "p-8 rounded-2xl border-2 backdrop-blur-sm",
+          "p-4 sm:p-8 rounded-2xl border-2 backdrop-blur-sm",
           normalizedEvaluation.methodologyComparison.agreement === "high"
             ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
             : normalizedEvaluation.methodologyComparison.agreement === "medium"
             ? "border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-900/20"
             : "border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-900/20"
         )}>
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className={cn(
-              "w-6 h-6",
-              normalizedEvaluation.methodologyComparison.agreement === "high"
-                ? "text-green-600 dark:text-green-400"
-                : normalizedEvaluation.methodologyComparison.agreement === "medium"
-                ? "text-yellow-600 dark:text-yellow-400"
-                : "text-orange-600 dark:text-orange-400"
-            )} />
-            <h3 className="text-2xl font-semibold text-black dark:text-white">Methodology Comparison</h3>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className={cn(
+                "w-5 h-5 sm:w-6 sm:h-6",
+                normalizedEvaluation.methodologyComparison.agreement === "high"
+                  ? "text-green-600 dark:text-green-400"
+                  : normalizedEvaluation.methodologyComparison.agreement === "medium"
+                  ? "text-yellow-600 dark:text-yellow-400"
+                  : "text-orange-600 dark:text-orange-400"
+              )} />
+              <h3 className="text-xl sm:text-2xl font-semibold text-black dark:text-white">Methodology Comparison</h3>
+            </div>
             <div className={cn(
-              "ml-auto px-4 py-2 rounded-full text-sm font-bold uppercase",
+              "sm:ml-auto px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-bold uppercase w-fit",
               normalizedEvaluation.methodologyComparison.agreement === "high"
                 ? "bg-green-500/20 text-green-700 dark:text-green-300"
                 : normalizedEvaluation.methodologyComparison.agreement === "medium"
@@ -304,7 +306,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Textual Analysis - NEW! - LAST SECTION BEFORE AUTH GATE */}
       {normalizedEvaluation.textualAnalysis && (
-        <div className="p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
+        <div className="p-4 sm:p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Demographic-Specific Purchase Intent</h3>
@@ -327,7 +329,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       <div className={!user && !isShowcase ? "protected-content-blur" : ""}>
       {/* SSR Distribution Visualization - ENHANCED WITH CHART! */}
       {normalizedEvaluation.ssrDistribution && (
-        <div className="p-8 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 backdrop-blur-sm">
+        <div className="p-4 sm:p-8 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <TrendingUp className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Purchase Intent Distribution (Likert Scale)</h3>
@@ -349,7 +351,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Confidence Breakdown - NEW! */}
       {normalizedEvaluation.ssrConfidence && (
-        <div className="p-8 rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/20 backdrop-blur-sm">
+        <div className="p-4 sm:p-8 rounded-2xl border-2 border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-6 h-6 text-teal-600 dark:text-teal-400" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Confidence Metrics Breakdown</h3>
@@ -366,7 +368,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Anchor Similarity Analysis - NEW! */}
       {normalizedEvaluation.ssrDistribution && (
-        <div className="p-8 rounded-2xl border-2 border-cyan-200 dark:border-cyan-800 bg-cyan-50/50 dark:bg-cyan-900/20 backdrop-blur-sm">
+        <div className="p-4 sm:p-8 rounded-2xl border-2 border-cyan-200 dark:border-cyan-800 bg-cyan-50/50 dark:bg-cyan-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Semantic Anchor Analysis</h3>
@@ -388,7 +390,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       )}
 
       {/* Evaluation Factors */}
-      <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+      <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
         <h3 className="text-2xl font-semibold mb-6 text-black dark:text-white">Evaluation Factors</h3>
 
         {/* Radar Chart Visualization */}
@@ -406,7 +408,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       </div>
 
       {/* AI Analysis */}
-      <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+      <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="w-5 h-5 text-black dark:text-white" />
           <h3 className="text-2xl font-semibold text-black dark:text-white">AI Analysis</h3>
@@ -415,7 +417,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       </div>
 
       {/* Demographic Impact - NEW! */}
-      <div className="p-8 rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 backdrop-blur-sm">
+      <div className="p-4 sm:p-8 rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20 backdrop-blur-sm">
         <div className="flex items-center gap-2 mb-2">
           <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           <h3 className="text-2xl font-semibold text-black dark:text-white">Demographic Impact Analysis</h3>
@@ -430,7 +432,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Live Website Details - Bottom Section */}
       {normalizedEvaluation.websiteSnapshot && (
-        <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+        <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-6">
             <Package className="w-6 h-6 text-black dark:text-white" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Live Website Snapshot</h3>
@@ -484,7 +486,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       ) : null}
 
       {/* Legacy Recommendations - Fallback or Additional */}
-      <div className="p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
+      <div className="p-4 sm:p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
         <h3 className="text-2xl font-semibold mb-2 text-black dark:text-white">
           {normalizedEvaluation.sectionedRecommendations && normalizedEvaluation.sectionedRecommendations.length > 0 ? "Additional Recommendations" : "Recommendations"}
         </h3>

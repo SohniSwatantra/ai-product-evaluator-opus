@@ -44,10 +44,10 @@ export function MethodologyGauges({ factorScore, ssrScore, agreement }: Methodol
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
       {/* Factor-Based Score Gauge */}
       <div className="flex flex-col items-center">
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={160}>
           <RadialBarChart
             cx="50%"
             cy="50%"
@@ -67,14 +67,14 @@ export function MethodologyGauges({ factorScore, ssrScore, agreement }: Methodol
             />
           </RadialBarChart>
         </ResponsiveContainer>
-        <div className="text-center mt-2">
-          <div className="text-3xl font-bold" style={{ color: agreementColor }}>
+        <div className="text-center mt-1 sm:mt-2">
+          <div className="text-2xl sm:text-3xl font-bold" style={{ color: agreementColor }}>
             {factorScore}%
           </div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+          <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             Factor-Based Score
           </div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
+          <div className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-500 mt-1">
             Paper 1: Weighted Factors
           </div>
         </div>
@@ -82,7 +82,7 @@ export function MethodologyGauges({ factorScore, ssrScore, agreement }: Methodol
 
       {/* SSR Score Gauge */}
       <div className="flex flex-col items-center">
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={160}>
           <RadialBarChart
             cx="50%"
             cy="50%"
@@ -102,30 +102,30 @@ export function MethodologyGauges({ factorScore, ssrScore, agreement }: Methodol
             />
           </RadialBarChart>
         </ResponsiveContainer>
-        <div className="text-center mt-2">
-          <div className="text-3xl font-bold" style={{ color: agreementColor }}>
+        <div className="text-center mt-1 sm:mt-2">
+          <div className="text-2xl sm:text-3xl font-bold" style={{ color: agreementColor }}>
             {ssrScore}%
           </div>
-          <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+          <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             SSR Score
           </div>
-          <div className="text-xs text-neutral-500 dark:text-neutral-500 mt-1">
+          <div className="text-[10px] sm:text-xs text-neutral-500 dark:text-neutral-500 mt-1">
             Paper 2: Semantic Similarity
           </div>
         </div>
       </div>
 
       {/* Agreement Indicator */}
-      <div className="col-span-1 md:col-span-2 text-center">
+      <div className="col-span-1 sm:col-span-2 text-center">
         <div
-          className="inline-block px-4 py-2 rounded-full text-sm font-semibold"
+          className="inline-block px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-semibold"
           style={{
             backgroundColor: `${agreementColor}20`,
             color: agreementColor,
             border: `2px solid ${agreementColor}`,
           }}
         >
-          {agreement.toUpperCase()} Agreement: {Math.abs(factorScore - ssrScore).toFixed(0)} point difference
+          {agreement.toUpperCase()} Agreement: {Math.abs(factorScore - ssrScore).toFixed(0)} pt diff
         </div>
       </div>
     </div>
