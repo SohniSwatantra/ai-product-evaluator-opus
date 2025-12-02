@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     // Ensure credit tables exist
     await initCreditTables();
 
-    // Get user's credit balance
-    const balance = await getUserCredits(user.id);
+    // Get user's credit balance (pass email for admin check on new users)
+    const balance = await getUserCredits(user.id, user.primaryEmail || undefined);
 
     // Check if transactions are requested
     const includeTransactions = request.nextUrl.searchParams.get("transactions") === "true";
