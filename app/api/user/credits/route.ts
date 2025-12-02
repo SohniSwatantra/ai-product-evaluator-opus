@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserCredits, getUserCreditTransactions, initCreditTables } from "@/lib/db";
-import { stackServerApp } from "@/stack";
+import { stackServerApp } from "@/stack/server";
 
 export async function GET(request: NextRequest) {
   try {
