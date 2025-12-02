@@ -73,7 +73,7 @@ export async function POST(
       const response = await callOpenRouter(
         modelConfig.openrouter_model_id,
         prompt,
-        2000
+        4000 // Increased to prevent truncation for verbose models like Gemini
       );
 
       // Parse response
