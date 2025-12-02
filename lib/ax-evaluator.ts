@@ -177,3 +177,31 @@ AX measures how easily AI agents (like ChatGPT, Claude, Perplexity) can access, 
 
 **Important:** Since you cannot actually fetch the URL, use your knowledge about typical website patterns for this domain/type of product to provide realistic evaluation. Focus on what agents would typically need to understand the product effectively.`;
 }
+
+/**
+ * Get color for AI provider (used in AX Council visualization)
+ */
+export function getProviderColor(provider: string): string {
+  const colors: Record<string, string> = {
+    'openai': '#10B981',      // Green
+    'anthropic': '#8B5CF6',   // Purple
+    'google': '#3B82F6',      // Blue
+    'xai': '#EF4444',         // Red
+    'council': '#F97316'      // Orange (for leader)
+  };
+  return colors[provider.toLowerCase()] || '#6B7280'; // Gray fallback
+}
+
+/**
+ * Extract provider from model display name or model_id
+ */
+export function getProviderFromModel(modelId: string, displayName: string): string {
+  const lowerName = (displayName + ' ' + modelId).toLowerCase();
+
+  if (lowerName.includes('gpt') || lowerName.includes('openai')) return 'openai';
+  if (lowerName.includes('claude') || lowerName.includes('anthropic')) return 'anthropic';
+  if (lowerName.includes('gemini') || lowerName.includes('google')) return 'google';
+  if (lowerName.includes('grok') || lowerName.includes('xai')) return 'xai';
+
+  return 'unknown';
+}

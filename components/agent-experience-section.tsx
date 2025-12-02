@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw, Star } from "lucide-react";
 import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult } from "@/types";
 import { AXScoreGauge } from "@/components/charts/ax-score-gauge";
+import { AXCouncilVisual } from "@/components/ax-council-visual";
 import { cn } from "@/lib/utils";
 
 interface AgentExperienceSectionProps {
@@ -238,13 +239,16 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
             <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
               Multi-Model Evaluation
             </h4>
-            <button
-              onClick={fetchStatus}
-              className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-              title="Refresh status"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-neutral-400 italic hidden sm:inline">Refresh if taking longer</span>
+              <button
+                onClick={fetchStatus}
+                className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+                title="Refresh status"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {/* Default Claude Opus 4.5 (from initial evaluation) - Always first, green */}
@@ -390,6 +394,11 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
             {councilResult.council_analysis}
           </p>
         </div>
+      )}
+
+      {/* AX Council Visual Representation */}
+      {selectedModel === 'council' && councilResult && (
+        <AXCouncilVisual councilResult={councilResult} />
       )}
 
       {/* AX Score Gauges */}
