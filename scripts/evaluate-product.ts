@@ -420,8 +420,9 @@ ${scrapedDataAppendix}
 
   // Save evaluation to permanent table (used for history dashboards)
   try {
-    await saveEvaluation(evaluation, userId);
-    console.log("💾 Evaluation stored in evaluations table");
+    const savedId = await saveEvaluation(evaluation, userId);
+    evaluation.id = savedId;  // Add ID to evaluation for multi-model AX feature
+    console.log(`💾 Evaluation stored in evaluations table with ID: ${savedId}`);
   } catch (error) {
     console.error("Failed to save evaluation to evaluations table:", error);
   }
