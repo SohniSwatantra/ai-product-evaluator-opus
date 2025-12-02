@@ -38,7 +38,7 @@ export function Navbar() {
   };
 
   return (
-    <div className="fixed top-10 inset-x-0 max-w-5xl mx-auto z-50 px-4">
+    <div className="fixed top-10 inset-x-0 max-w-5xl mx-auto z-[100] px-4">
       <Menu setActive={setActive}>
         <div className="flex items-center gap-2 px-2 cursor-pointer" onClick={() => router.push("/")}>
           <Brain className="w-5 h-5 text-[#4A044E]" />
