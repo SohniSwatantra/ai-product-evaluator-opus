@@ -840,6 +840,202 @@ export async function saveAXCouncilResult(result: Omit<AXCouncilResult, 'id' | '
   }
 }
 
+// ============================================
+// Credit System Functions
+// ============================================
+
+/**
+ * Initialize credit system tables
+ */
+export async function initCreditTables() {
+  try {
+    // Create user_credits table
+    await sql`
+      CREATE TABLE IF NOT EXISTS user_credits (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT UNIQUE NOT NULL,
+        balance INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    // Create credit_transactions table (audit log)
+    await sql`
+      CREATE TABLE IF NOT EXISTS credit_transactions (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        description TEXT,
+        stripe_session_id TEXT,
+        balance_after INTEGER NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    // Create indices
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_user_credits_user_id ON user_credits(user_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_credit_transactions_stripe_session ON credit_transactions(stripe_session_id)
+    `;
+
+    console.log("Credit tables initialized successfully");
+  } catch (error) {
+    console.error("Error initializing credit tables:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get user's credit balance
+ */
+export async function getUserCredits(userId: string): Promise<number> {
+  try {
+    const results = await sql`
+      SELECT balance FROM user_credits WHERE user_id = ${userId}
+    `;
+
+    if (results.length === 0) {
+      // Create new user with 0 balance
+      await sql`
+        INSERT INTO user_credits (user_id, balance)
+        VALUES (${userId}, 0)
+        ON CONFLICT (user_id) DO NOTHING
+      `;
+      return 0;
+    }
+
+    return results[0].balance;
+  } catch (error) {
+    console.error("Error fetching user credits:", error);
+    throw error;
+  }
+}
+
+/**
+ * Add credits to user's account
+ */
+export async function addUserCredits(
+  userId: string,
+  amount: number,
+  description: string,
+  stripeSessionId?: string
+): Promise<number> {
+  try {
+    // Check if this stripe session was already processed
+    if (stripeSessionId) {
+      const existing = await sql`
+        SELECT id FROM credit_transactions WHERE stripe_session_id = ${stripeSessionId}
+      `;
+      if (existing.length > 0) {
+        console.log(`Stripe session ${stripeSessionId} already processed`);
+        return await getUserCredits(userId);
+      }
+    }
+
+    // Ensure user exists
+    await sql`
+      INSERT INTO user_credits (user_id, balance)
+      VALUES (${userId}, 0)
+      ON CONFLICT (user_id) DO NOTHING
+    `;
+
+    // Add credits
+    const result = await sql`
+      UPDATE user_credits
+      SET balance = balance + ${amount}, updated_at = NOW()
+      WHERE user_id = ${userId}
+      RETURNING balance
+    `;
+
+    const newBalance = result[0].balance;
+
+    // Log transaction
+    await sql`
+      INSERT INTO credit_transactions (user_id, amount, type, description, stripe_session_id, balance_after)
+      VALUES (${userId}, ${amount}, 'purchase', ${description}, ${stripeSessionId || null}, ${newBalance})
+    `;
+
+    console.log(`Added ${amount} credits to user ${userId}. New balance: ${newBalance}`);
+    return newBalance;
+  } catch (error) {
+    console.error("Error adding user credits:", error);
+    throw error;
+  }
+}
+
+/**
+ * Deduct credits from user's account
+ * Returns the new balance, or throws if insufficient credits
+ */
+export async function deductUserCredits(
+  userId: string,
+  amount: number,
+  description: string
+): Promise<number> {
+  try {
+    // Check current balance
+    const currentBalance = await getUserCredits(userId);
+
+    if (currentBalance < amount) {
+      throw new Error(`Insufficient credits. Required: ${amount}, Available: ${currentBalance}`);
+    }
+
+    // Deduct credits
+    const result = await sql`
+      UPDATE user_credits
+      SET balance = balance - ${amount}, updated_at = NOW()
+      WHERE user_id = ${userId} AND balance >= ${amount}
+      RETURNING balance
+    `;
+
+    if (result.length === 0) {
+      throw new Error("Failed to deduct credits - insufficient balance");
+    }
+
+    const newBalance = result[0].balance;
+
+    // Log transaction
+    await sql`
+      INSERT INTO credit_transactions (user_id, amount, type, description, balance_after)
+      VALUES (${userId}, ${-amount}, 'usage', ${description}, ${newBalance})
+    `;
+
+    console.log(`Deducted ${amount} credits from user ${userId}. New balance: ${newBalance}`);
+    return newBalance;
+  } catch (error) {
+    console.error("Error deducting user credits:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get user's credit transaction history
+ */
+export async function getUserCreditTransactions(userId: string, limit: number = 50) {
+  try {
+    const results = await sql`
+      SELECT id, amount, type, description, balance_after, created_at
+      FROM credit_transactions
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `;
+    return results;
+  } catch (error) {
+    console.error("Error fetching credit transactions:", error);
+    throw error;
+  }
+}
+
 /**
  * Seed initial AX model configurations
  */
