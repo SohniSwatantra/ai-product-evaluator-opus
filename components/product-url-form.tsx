@@ -132,6 +132,9 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
                 </>
               )}
             </button>
+            <p className="text-center text-sm text-neutral-500 dark:text-neutral-400">
+              Analysis takes about ~ 2 mins
+            </p>
           </form>
         </div>
       </GlowingShadow>
