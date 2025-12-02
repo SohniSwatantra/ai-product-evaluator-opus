@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins, Ticket, Copy, Check, ToggleLeft, ToggleRight } from "lucide-react";
 import type { AXModelConfig } from "@/types";
+import type { VoucherCode } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export default function AdminPage() {
@@ -31,9 +32,30 @@ export default function AdminPage() {
   const [settingCredits, setSettingCredits] = useState(false);
   const [creditsMessage, setCreditsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Voucher state
+  const [vouchers, setVouchers] = useState<VoucherCode[]>([]);
+  const [voucherStats, setVoucherStats] = useState<{
+    totalVouchers: number;
+    activeVouchers: number;
+    totalRedemptions: number;
+    totalCreditsRedeemed: number;
+  } | null>(null);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [showVoucherForm, setShowVoucherForm] = useState(false);
+  const [newVoucher, setNewVoucher] = useState({
+    credits_amount: 100,
+    max_uses: "",
+    expires_at: "",
+    custom_code: ""
+  });
+  const [creatingVoucher, setCreatingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
   useEffect(() => {
     checkAdminStatus();
     fetchCurrentBalance();
+    fetchVouchers();
   }, []);
 
   const fetchCurrentBalance = async () => {
@@ -230,6 +252,96 @@ export default function AdminPage() {
     }
   };
 
+  // Voucher functions
+  const fetchVouchers = async () => {
+    try {
+      setLoadingVouchers(true);
+      const response = await fetch("/api/admin/vouchers");
+      const data = await response.json();
+      if (data.vouchers) {
+        setVouchers(data.vouchers);
+        setVoucherStats(data.stats);
+      }
+    } catch (err) {
+      console.error("Failed to fetch vouchers:", err);
+    } finally {
+      setLoadingVouchers(false);
+    }
+  };
+
+  const handleCreateVoucher = async () => {
+    try {
+      setCreatingVoucher(true);
+      setVoucherError(null);
+
+      const response = await fetch("/api/admin/vouchers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          credits_amount: newVoucher.credits_amount,
+          max_uses: newVoucher.max_uses ? parseInt(newVoucher.max_uses) : null,
+          expires_at: newVoucher.expires_at || null,
+          custom_code: newVoucher.custom_code || null
+        })
+      });
+
+      const data = await response.json();
+      if (data.voucher) {
+        setVouchers([data.voucher, ...vouchers]);
+        setShowVoucherForm(false);
+        setNewVoucher({ credits_amount: 100, max_uses: "", expires_at: "", custom_code: "" });
+        fetchVouchers(); // Refresh stats
+      } else {
+        setVoucherError(data.error || "Failed to create voucher");
+      }
+    } catch (err: any) {
+      setVoucherError(err.message || "Failed to create voucher");
+    } finally {
+      setCreatingVoucher(false);
+    }
+  };
+
+  const handleDeleteVoucher = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this voucher?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/vouchers?id=${id}`, {
+        method: "DELETE"
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setVouchers(vouchers.filter(v => v.id !== id));
+        fetchVouchers(); // Refresh stats
+      }
+    } catch (err) {
+      console.error("Failed to delete voucher:", err);
+    }
+  };
+
+  const handleToggleVoucher = async (id: number, currentActive: boolean) => {
+    try {
+      const response = await fetch("/api/admin/vouchers", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !currentActive })
+      });
+
+      const data = await response.json();
+      if (data.voucher) {
+        setVouchers(vouchers.map(v => v.id === id ? data.voucher : v));
+      }
+    } catch (err) {
+      console.error("Failed to toggle voucher:", err);
+    }
+  };
+
+  const copyToClipboard = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
   if (isAdmin === null) {
     return (
       <BackgroundGlow>
@@ -319,6 +431,210 @@ export default function AdminPage() {
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Voucher Codes Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Ticket className="w-6 h-6 text-cyan-400" />
+              <h2 className="text-xl font-bold text-white">Voucher Codes</h2>
+              {voucherStats && (
+                <span className="text-sm text-neutral-400">
+                  ({voucherStats.activeVouchers} active, {voucherStats.totalRedemptions} redeemed)
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowVoucherForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Voucher
+            </button>
+          </div>
+
+          {/* Voucher Error */}
+          {voucherError && (
+            <div className="p-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300">
+              {voucherError}
+              <button
+                onClick={() => setVoucherError(null)}
+                className="ml-4 text-red-400 hover:text-red-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Create Voucher Form */}
+          {showVoucherForm && (
+            <div className="p-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10">
+              <h3 className="text-lg font-semibold text-white mb-4">Create New Voucher</h3>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Credits Amount *</label>
+                  <input
+                    type="number"
+                    value={newVoucher.credits_amount}
+                    onChange={(e) => setNewVoucher({ ...newVoucher, credits_amount: parseInt(e.target.value) || 0 })}
+                    placeholder="100"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Max Uses (empty = unlimited)</label>
+                  <input
+                    type="number"
+                    value={newVoucher.max_uses}
+                    onChange={(e) => setNewVoucher({ ...newVoucher, max_uses: e.target.value })}
+                    placeholder="Unlimited"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Expires At (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={newVoucher.expires_at}
+                    onChange={(e) => setNewVoucher({ ...newVoucher, expires_at: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Custom Code (optional)</label>
+                  <input
+                    type="text"
+                    value={newVoucher.custom_code}
+                    onChange={(e) => setNewVoucher({ ...newVoucher, custom_code: e.target.value.toUpperCase() })}
+                    placeholder="BETA-XXXXXXXX"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 font-mono"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleCreateVoucher}
+                  disabled={creatingVoucher || newVoucher.credits_amount <= 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {creatingVoucher ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Ticket className="w-4 h-4" />
+                  )}
+                  Create Voucher
+                </button>
+                <button
+                  onClick={() => setShowVoucherForm(false)}
+                  className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Vouchers List */}
+          <div className="p-6 rounded-2xl border border-white/10 bg-black">
+            <h3 className="text-lg font-semibold text-white mb-4">All Vouchers</h3>
+
+            {loadingVouchers ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+              </div>
+            ) : vouchers.length === 0 ? (
+              <p className="text-neutral-400 text-center py-8">No vouchers created yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {vouchers.map((voucher) => (
+                  <div
+                    key={voucher.id}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-xl border transition-colors",
+                      voucher.is_active
+                        ? "border-white/10 bg-neutral-900"
+                        : "border-white/5 bg-neutral-900/50 opacity-60"
+                    )}
+                  >
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4">
+                      <div>
+                        <p className="text-xs text-neutral-500">Code</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-cyan-400 font-mono text-sm">{voucher.code}</code>
+                          <button
+                            onClick={() => copyToClipboard(voucher.code)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy code"
+                          >
+                            {copiedCode === voucher.code ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-neutral-400" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Credits</p>
+                        <p className="text-white font-medium">{voucher.credits_amount}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Usage</p>
+                        <p className="text-neutral-300">
+                          {voucher.current_uses}
+                          {voucher.max_uses !== null ? ` / ${voucher.max_uses}` : ' / ∞'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Expires</p>
+                        <p className="text-neutral-300 text-sm">
+                          {voucher.expires_at
+                            ? new Date(voucher.expires_at).toLocaleDateString()
+                            : 'Never'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Status</p>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          voucher.is_active
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-neutral-500/20 text-neutral-400"
+                        )}>
+                          {voucher.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleVoucher(voucher.id, voucher.is_active)}
+                        className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          voucher.is_active
+                            ? "text-green-400 hover:bg-green-500/20"
+                            : "text-neutral-500 hover:bg-neutral-800"
+                        )}
+                        title={voucher.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {voucher.is_active ? (
+                          <ToggleRight className="w-5 h-5" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVoucher(voucher.id)}
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* AX Models Section Header */}

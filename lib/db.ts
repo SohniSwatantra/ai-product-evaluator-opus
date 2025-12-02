@@ -1402,3 +1402,317 @@ export async function getShowcaseEvaluationsForAdmin(): Promise<any[]> {
     throw error;
   }
 }
+
+// ============================================
+// Voucher Code System Functions
+// ============================================
+
+export interface VoucherCode {
+  id: number;
+  code: string;
+  credits_amount: number;
+  max_uses: number | null;
+  current_uses: number;
+  expires_at: Date | null;
+  is_active: boolean;
+  created_at: Date;
+}
+
+export interface VoucherRedemption {
+  id: number;
+  voucher_id: number;
+  user_id: string;
+  redeemed_at: Date;
+}
+
+/**
+ * Initialize voucher tables
+ */
+export async function initVoucherTables() {
+  try {
+    // Create voucher_codes table
+    await sql`
+      CREATE TABLE IF NOT EXISTS voucher_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        credits_amount INTEGER NOT NULL,
+        max_uses INTEGER DEFAULT NULL,
+        current_uses INTEGER DEFAULT 0,
+        expires_at TIMESTAMP DEFAULT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    // Create voucher_redemptions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS voucher_redemptions (
+        id SERIAL PRIMARY KEY,
+        voucher_id INTEGER REFERENCES voucher_codes(id) ON DELETE CASCADE,
+        user_id VARCHAR(255) NOT NULL,
+        redeemed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(voucher_id, user_id)
+      )
+    `;
+
+    // Create indices
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_voucher_codes_code ON voucher_codes(code)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_voucher_codes_active ON voucher_codes(is_active)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_voucher_redemptions_user ON voucher_redemptions(user_id)
+    `;
+
+    console.log("Voucher tables initialized successfully");
+  } catch (error) {
+    console.error("Error initializing voucher tables:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a random voucher code
+ */
+export function generateVoucherCode(prefix: string = "BETA"): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // Avoiding confusing chars like 0, O, 1, I
+  let code = prefix + "-";
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
+ * Create a new voucher code (admin only)
+ */
+export async function createVoucher(
+  creditsAmount: number,
+  maxUses: number | null = null,
+  expiresAt: Date | null = null,
+  customCode?: string
+): Promise<VoucherCode> {
+  try {
+    const code = customCode || generateVoucherCode();
+
+    const result = await sql`
+      INSERT INTO voucher_codes (code, credits_amount, max_uses, expires_at)
+      VALUES (${code}, ${creditsAmount}, ${maxUses}, ${expiresAt})
+      RETURNING id, code, credits_amount, max_uses, current_uses, expires_at, is_active, created_at
+    `;
+
+    console.log(`Created voucher: ${code} for ${creditsAmount} credits`);
+    return result[0] as VoucherCode;
+  } catch (error: any) {
+    if (error.code === '23505') { // Unique violation
+      throw new Error("A voucher with this code already exists");
+    }
+    console.error("Error creating voucher:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all vouchers (admin only)
+ */
+export async function getVouchers(): Promise<VoucherCode[]> {
+  try {
+    const results = await sql`
+      SELECT id, code, credits_amount, max_uses, current_uses, expires_at, is_active, created_at
+      FROM voucher_codes
+      ORDER BY created_at DESC
+    `;
+    return results as VoucherCode[];
+  } catch (error) {
+    console.error("Error fetching vouchers:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get a voucher by code
+ */
+export async function getVoucherByCode(code: string): Promise<VoucherCode | null> {
+  try {
+    const results = await sql`
+      SELECT id, code, credits_amount, max_uses, current_uses, expires_at, is_active, created_at
+      FROM voucher_codes
+      WHERE UPPER(code) = UPPER(${code})
+    `;
+    return results.length > 0 ? results[0] as VoucherCode : null;
+  } catch (error) {
+    console.error("Error fetching voucher by code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a voucher (admin only)
+ */
+export async function deleteVoucher(id: number): Promise<boolean> {
+  try {
+    const result = await sql`
+      DELETE FROM voucher_codes
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return result.length > 0;
+  } catch (error) {
+    console.error("Error deleting voucher:", error);
+    throw error;
+  }
+}
+
+/**
+ * Toggle voucher active status (admin only)
+ */
+export async function toggleVoucherActive(id: number, isActive: boolean): Promise<VoucherCode | null> {
+  try {
+    const result = await sql`
+      UPDATE voucher_codes
+      SET is_active = ${isActive}
+      WHERE id = ${id}
+      RETURNING id, code, credits_amount, max_uses, current_uses, expires_at, is_active, created_at
+    `;
+    return result.length > 0 ? result[0] as VoucherCode : null;
+  } catch (error) {
+    console.error("Error toggling voucher active status:", error);
+    throw error;
+  }
+}
+
+/**
+ * Check if a user has already redeemed a specific voucher
+ */
+export async function hasUserRedeemedVoucher(voucherId: number, userId: string): Promise<boolean> {
+  try {
+    const results = await sql`
+      SELECT id FROM voucher_redemptions
+      WHERE voucher_id = ${voucherId} AND user_id = ${userId}
+    `;
+    return results.length > 0;
+  } catch (error) {
+    console.error("Error checking voucher redemption:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all redemptions for a user
+ */
+export async function getUserVoucherRedemptions(userId: string): Promise<VoucherRedemption[]> {
+  try {
+    const results = await sql`
+      SELECT id, voucher_id, user_id, redeemed_at
+      FROM voucher_redemptions
+      WHERE user_id = ${userId}
+      ORDER BY redeemed_at DESC
+    `;
+    return results as VoucherRedemption[];
+  } catch (error) {
+    console.error("Error fetching user voucher redemptions:", error);
+    throw error;
+  }
+}
+
+/**
+ * Redeem a voucher code
+ * Returns the credits added, or throws an error if redemption fails
+ */
+export async function redeemVoucher(code: string, userId: string): Promise<{ credits: number; newBalance: number }> {
+  try {
+    // Get the voucher
+    const voucher = await getVoucherByCode(code);
+
+    if (!voucher) {
+      throw new Error("Invalid voucher code");
+    }
+
+    // Check if voucher is active
+    if (!voucher.is_active) {
+      throw new Error("This voucher is no longer active");
+    }
+
+    // Check if voucher has expired
+    if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) {
+      throw new Error("This voucher has expired");
+    }
+
+    // Check if voucher has reached max uses
+    if (voucher.max_uses !== null && voucher.current_uses >= voucher.max_uses) {
+      throw new Error("This voucher has reached its maximum number of uses");
+    }
+
+    // Check if user has already redeemed this voucher
+    const alreadyRedeemed = await hasUserRedeemedVoucher(voucher.id, userId);
+    if (alreadyRedeemed) {
+      throw new Error("You have already redeemed this voucher");
+    }
+
+    // Record the redemption
+    await sql`
+      INSERT INTO voucher_redemptions (voucher_id, user_id)
+      VALUES (${voucher.id}, ${userId})
+    `;
+
+    // Increment the usage count
+    await sql`
+      UPDATE voucher_codes
+      SET current_uses = current_uses + 1
+      WHERE id = ${voucher.id}
+    `;
+
+    // Add credits to user's account
+    const newBalance = await addUserCredits(
+      userId,
+      voucher.credits_amount,
+      `Voucher redemption: ${voucher.code}`
+    );
+
+    console.log(`User ${userId} redeemed voucher ${voucher.code} for ${voucher.credits_amount} credits`);
+
+    return {
+      credits: voucher.credits_amount,
+      newBalance
+    };
+  } catch (error) {
+    console.error("Error redeeming voucher:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get voucher redemption stats (admin only)
+ */
+export async function getVoucherStats(): Promise<{
+  totalVouchers: number;
+  activeVouchers: number;
+  totalRedemptions: number;
+  totalCreditsRedeemed: number;
+}> {
+  try {
+    const statsResult = await sql`
+      SELECT
+        COUNT(*) as total_vouchers,
+        COUNT(CASE WHEN is_active THEN 1 END) as active_vouchers,
+        SUM(current_uses) as total_redemptions,
+        SUM(credits_amount * current_uses) as total_credits_redeemed
+      FROM voucher_codes
+    `;
+
+    const stats = statsResult[0];
+    return {
+      totalVouchers: parseInt(stats.total_vouchers) || 0,
+      activeVouchers: parseInt(stats.active_vouchers) || 0,
+      totalRedemptions: parseInt(stats.total_redemptions) || 0,
+      totalCreditsRedeemed: parseInt(stats.total_credits_redeemed) || 0
+    };
+  } catch (error) {
+    console.error("Error fetching voucher stats:", error);
+    throw error;
+  }
+}

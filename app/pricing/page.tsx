@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket } from "lucide-react";
 import { useUser } from "@stackframe/stack";
 import { cn } from "@/lib/utils";
 import { useCreditBalance } from "@/components/credits/credit-balance";
@@ -75,6 +75,11 @@ export default function PricingPage() {
   const user = useUser();
   const { balance, loading: balanceLoading, refetch: refetchBalance } = useCreditBalance();
 
+  // Voucher state
+  const [voucherCode, setVoucherCode] = useState("");
+  const [redeemingVoucher, setRedeemingVoucher] = useState(false);
+  const [voucherMessage, setVoucherMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
 
@@ -84,6 +89,43 @@ export default function PricingPage() {
       refetchBalance();
     }
   }, [success, refetchBalance]);
+
+  const handleRedeemVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherMessage({ type: 'error', text: 'Please enter a voucher code' });
+      return;
+    }
+
+    if (!user) {
+      window.location.href = "/handler/sign-in?redirect=/pricing";
+      return;
+    }
+
+    try {
+      setRedeemingVoucher(true);
+      setVoucherMessage(null);
+
+      const response = await fetch("/api/vouchers/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: voucherCode.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setVoucherMessage({ type: 'success', text: data.message });
+        setVoucherCode("");
+        refetchBalance();
+      } else {
+        setVoucherMessage({ type: 'error', text: data.error || 'Failed to redeem voucher' });
+      }
+    } catch (err: any) {
+      setVoucherMessage({ type: 'error', text: err.message || 'Failed to redeem voucher' });
+    } finally {
+      setRedeemingVoucher(false);
+    }
+  };
 
   const handlePurchase = async (packId: string) => {
     if (!user) {
@@ -198,6 +240,52 @@ export default function PricingPage() {
               </div>
             </div>
           )}
+
+          {/* Voucher Code Redemption */}
+          <div className="mb-8 p-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-cyan-500/20">
+                  <Ticket className="w-6 h-6 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">Have a Voucher Code?</h3>
+                  <p className="text-sm text-neutral-400">Redeem your voucher to get free credits</p>
+                </div>
+              </div>
+              <div className="flex-1 w-full md:w-auto">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={voucherCode}
+                    onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRedeemVoucher()}
+                    placeholder="Enter voucher code (e.g., BETA-XXXXXXXX)"
+                    className="flex-1 px-4 py-3 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <button
+                    onClick={handleRedeemVoucher}
+                    disabled={redeemingVoucher}
+                    className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {redeemingVoucher ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Redeem"
+                    )}
+                  </button>
+                </div>
+                {voucherMessage && (
+                  <p className={cn(
+                    "text-sm mt-2",
+                    voucherMessage.type === 'success' ? "text-green-400" : "text-red-400"
+                  )}>
+                    {voucherMessage.text}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Error Message */}
           {error && (
