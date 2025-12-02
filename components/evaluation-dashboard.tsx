@@ -384,7 +384,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Agent Experience (AX) Section - UNIQUE DIFFERENTIATOR! */}
       {normalizedEvaluation.agentExperience && (
-        <AgentExperienceSection agentExperience={normalizedEvaluation.agentExperience} evaluationId={normalizedEvaluation.id} />
+        <AgentExperienceSection agentExperience={normalizedEvaluation.agentExperience} evaluationId={normalizedEvaluation.id} isShowcase={isShowcase} />
       )}
 
       {/* Evaluation Factors */}

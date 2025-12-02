@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface AgentExperienceSectionProps {
   agentExperience: AgentExperience;
   evaluationId?: number;
+  isShowcase?: boolean; // Disable model buttons for showcase evaluations
 }
 
 interface ModelTabStatus {
@@ -19,7 +20,7 @@ interface ModelTabStatus {
   anps: number | null;
 }
 
-export function AgentExperienceSection({ agentExperience, evaluationId }: AgentExperienceSectionProps) {
+export function AgentExperienceSection({ agentExperience, evaluationId, isShowcase = false }: AgentExperienceSectionProps) {
   const [models, setModels] = useState<AXModelConfig[]>([]);
   const [modelStatuses, setModelStatuses] = useState<ModelTabStatus[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
@@ -278,13 +279,14 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
                 <button
                   key={model.model_id}
                   onClick={() => {
+                    if (isShowcase) return; // Disable for showcase evaluations
                     if (isCompleted) {
                       fetchModelData(model.model_id);
                     } else if (!isProcessing) {
                       runModelEvaluation(model.model_id);
                     }
                   }}
-                  disabled={isProcessing}
+                  disabled={isProcessing || (isShowcase && !isCompleted)}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
                     isSelected
@@ -294,7 +296,8 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
                         : isFailed
                           ? "bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700"
                           : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-purple-400",
-                    isProcessing && "opacity-75 cursor-wait"
+                    isProcessing && "opacity-75 cursor-wait",
+                    isShowcase && !isCompleted && "opacity-50 cursor-not-allowed"
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -320,6 +323,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
             <div className="relative group">
               <button
                 onClick={() => {
+                  if (isShowcase) return; // Disable for showcase evaluations
                   if (councilResult) {
                     setSelectedModel('council');
                     setSelectedModelData(null);
@@ -327,16 +331,17 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
                     runCouncil();
                   }
                 }}
-                disabled={!allModelsComplete && !councilResult}
+                disabled={(!allModelsComplete && !councilResult) || (isShowcase && !councilResult)}
                 className={cn(
                   "px-4 py-2 rounded-lg text-sm font-medium transition-all border-2",
                   selectedModel === 'council'
                     ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500"
                     : councilResult
                       ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-500 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                      : allModelsComplete
+                      : allModelsComplete && !isShowcase
                         ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                        : "bg-white dark:bg-neutral-900 text-amber-600/50 dark:text-amber-500/50 border-amber-300 dark:border-amber-700 cursor-not-allowed"
+                        : "bg-white dark:bg-neutral-900 text-amber-600/50 dark:text-amber-500/50 border-amber-300 dark:border-amber-700 cursor-not-allowed",
+                  isShowcase && !councilResult && "opacity-50 cursor-not-allowed"
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -353,10 +358,10 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
                   )}
                 </div>
               </button>
-              {/* Tooltip - only show when disabled */}
-              {!allModelsComplete && !councilResult && (
+              {/* Tooltip - show when disabled */}
+              {((!allModelsComplete && !councilResult) || (isShowcase && !councilResult)) && (
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
-                  Run all model evaluations first to unlock AX Council
+                  {isShowcase ? "Model evaluations are disabled for showcase" : "Run all model evaluations first to unlock AX Council"}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800"></div>
                 </div>
               )}
