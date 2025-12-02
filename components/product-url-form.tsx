@@ -55,13 +55,7 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
     e.preventDefault();
     setError("");
 
-    // Check if user is logged in
-    if (!user) {
-      window.location.href = "/handler/sign-in?redirect=/";
-      return;
-    }
-
-    // Check if user has enough credits
+    // Check if user has enough credits (only for signed-in users)
     if (hasInsufficientCredits) {
       setShowPricingModal(true);
       return;
@@ -238,8 +232,6 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
             >
               {isAnalyzing ? (
                 <QuantumPulseLoader />
-              ) : !user ? (
-                <>Sign in to Analyze</>
               ) : (
                 <>
                   <Search className="w-5 h-5" />
