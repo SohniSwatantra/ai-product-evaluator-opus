@@ -243,7 +243,7 @@ export default function AdminPage() {
                     type="text"
                     value={newModel.model_id}
                     onChange={(e) => setNewModel({ ...newModel, model_id: e.target.value })}
-                    placeholder="e.g., claude-opus-4-5"
+                    placeholder="e.g., gpt-4o"
                     className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
                   />
                 </div>
@@ -253,7 +253,7 @@ export default function AdminPage() {
                     type="text"
                     value={newModel.display_name}
                     onChange={(e) => setNewModel({ ...newModel, display_name: e.target.value })}
-                    placeholder="e.g., Claude Opus 4.5"
+                    placeholder="e.g., GPT-4o"
                     className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
                   />
                 </div>
@@ -263,7 +263,7 @@ export default function AdminPage() {
                     type="text"
                     value={newModel.provider}
                     onChange={(e) => setNewModel({ ...newModel, provider: e.target.value })}
-                    placeholder="e.g., anthropic"
+                    placeholder="e.g., OpenAI"
                     className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
                   />
                 </div>
@@ -273,7 +273,7 @@ export default function AdminPage() {
                     type="text"
                     value={newModel.openrouter_model_id}
                     onChange={(e) => setNewModel({ ...newModel, openrouter_model_id: e.target.value })}
-                    placeholder="e.g., anthropic/claude-sonnet-4"
+                    placeholder="e.g., openai/gpt-4o"
                     className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
                   />
                 </div>
@@ -406,6 +406,18 @@ export default function AdminPage() {
               Configure which AI models are available for Agent Experience (AX) evaluations.
               Each model will evaluate websites independently, and the AX Council will aggregate
               their scores into a final assessment. Models are called via OpenRouter API.
+            </p>
+            <p className="text-sm text-purple-200/70 mt-2">
+              Find available model IDs at{" "}
+              <a
+                href="https://openrouter.ai/models"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                openrouter.ai/models
+              </a>
+              . Use the format <code className="bg-purple-900/50 px-1 rounded">provider/model-name</code> (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet).
             </p>
             <p className="text-sm text-purple-200/70 mt-2">
               Make sure you have set the <code className="bg-purple-900/50 px-1 rounded">OPENROUTER_API_KEY</code> environment variable.

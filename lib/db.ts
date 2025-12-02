@@ -851,35 +851,36 @@ export async function seedAXModelConfigs(): Promise<void> {
       return;
     }
 
+    // Model IDs sourced from https://openrouter.ai/models
     const initialConfigs = [
       {
-        model_id: "claude-opus-4-5",
-        display_name: "Claude Opus 4.5",
-        provider: "anthropic",
-        openrouter_model_id: "anthropic/claude-sonnet-4",
+        model_id: "gpt-4o",
+        display_name: "GPT-4o",
+        provider: "OpenAI",
+        openrouter_model_id: "openai/gpt-4o",
         is_enabled: true,
         sort_order: 1
       },
       {
-        model_id: "gpt-4o",
-        display_name: "GPT-4o",
-        provider: "openai",
-        openrouter_model_id: "openai/gpt-4o",
+        model_id: "gemini-2.0-flash",
+        display_name: "Gemini 2.0 Flash",
+        provider: "Google",
+        openrouter_model_id: "google/gemini-2.0-flash-001",
         is_enabled: true,
         sort_order: 2
       },
       {
-        model_id: "gemini-2-flash",
-        display_name: "Gemini 2.0 Flash",
-        provider: "google",
-        openrouter_model_id: "google/gemini-2.0-flash-001",
+        model_id: "claude-3.5-sonnet",
+        display_name: "Claude 3.5 Sonnet",
+        provider: "Anthropic",
+        openrouter_model_id: "anthropic/claude-3.5-sonnet",
         is_enabled: true,
         sort_order: 3
       },
       {
-        model_id: "perplexity-sonar",
-        display_name: "Perplexity Sonar",
-        provider: "perplexity",
+        model_id: "perplexity-sonar-pro",
+        display_name: "Perplexity Sonar Pro",
+        provider: "Perplexity",
         openrouter_model_id: "perplexity/sonar-pro",
         is_enabled: true,
         sort_order: 4
