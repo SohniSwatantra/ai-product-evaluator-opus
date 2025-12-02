@@ -383,7 +383,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
 
       {/* Agent Experience (AX) Section - UNIQUE DIFFERENTIATOR! */}
       {normalizedEvaluation.agentExperience && (
-        <AgentExperienceSection agentExperience={normalizedEvaluation.agentExperience} />
+        <AgentExperienceSection agentExperience={normalizedEvaluation.agentExperience} evaluationId={normalizedEvaluation.id} />
       )}
 
       {/* Evaluation Factors */}

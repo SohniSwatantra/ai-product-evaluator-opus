@@ -7,7 +7,7 @@ export default function Handler(props: unknown) {
    return (
      <BackgroundGlow>
        <Navbar />
-       <div className="pt-32 min-h-screen">
+       <div className="pt-32 min-h-screen relative z-10">
          <StackHandler fullPage app={stackServerApp} routeProps={props} />
        </div>
      </BackgroundGlow>

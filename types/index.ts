@@ -86,6 +86,7 @@ export interface WebsiteSnapshot {
 }
 
 export interface ProductEvaluation {
+  id?: number;
   url: string;
   overallScore: number;
   buyingIntentProbability: number;
@@ -114,4 +115,47 @@ export interface ProductEvaluation {
 export interface AnalysisRequest {
   productUrl: string;
   demographics: Demographics;
+}
+
+// AX Multi-Model Evaluation Types
+export interface AXModelConfig {
+  id?: number;
+  model_id: string;
+  display_name: string;
+  provider: string;
+  openrouter_model_id: string;
+  is_enabled: boolean;
+  sort_order: number;
+  created_at?: string;
+}
+
+export interface AXModelEvaluation {
+  id?: number;
+  evaluation_id: number;
+  model_id: string;
+  ax_score: number | null;
+  anps: number | null;
+  ax_factors: AXFactor[] | null;
+  agent_accessibility: string | null;
+  ax_recommendations: string[] | null;
+  raw_response: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message?: string | null;
+  created_at?: string;
+  completed_at?: string | null;
+}
+
+export interface AXCouncilResult {
+  id?: number;
+  evaluation_id: number;
+  final_ax_score: number;
+  final_anps: number;
+  model_scores: {
+    model_id: string;
+    display_name: string;
+    ax_score: number;
+    anps: number;
+  }[];
+  council_analysis: string;
+  created_at?: string;
 }
