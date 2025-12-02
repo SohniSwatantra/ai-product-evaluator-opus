@@ -59,6 +59,13 @@ export function Navbar() {
           About
         </a>
 
+        <a
+          href="/prompts"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity cursor-pointer"
+        >
+          Prompts
+        </a>
+
         {/* Auth Buttons / User Menu */}
         {user ? (
           <div className="relative" ref={userMenuRef}>
