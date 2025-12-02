@@ -13,7 +13,7 @@ export function HeroSection() {
 
       <p className="text-xl md:text-2xl text-neutral-600 dark:text-neutral-400 max-w-3xl mx-auto mb-4 leading-relaxed">
         Analyze any product, service, or SaaS using AI. Works with e-commerce, landing pages,
-        apps, and more. Get instant insights on buying probability.
+        apps, and more. Get instant insights on buying probability both Human and AI Agent like ChatGPT.
       </p>
 
       <div className="flex items-center justify-center gap-6 text-sm">
