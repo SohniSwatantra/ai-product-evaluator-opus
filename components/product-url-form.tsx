@@ -41,7 +41,26 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
       }
 
       // Validate it's a proper URL
-      new URL(normalizedUrl);
+      const urlObj = new URL(normalizedUrl);
+
+      // Check for suspicious/malformed URLs (e.g., https://https.com//example.com/)
+      const suspiciousDomains = ['https.com', 'http.com', 'www.com'];
+      if (suspiciousDomains.includes(urlObj.hostname.toLowerCase())) {
+        setError("Invalid URL format. Please check your URL and try again.");
+        return;
+      }
+
+      // Check for double slashes in path (excluding protocol)
+      if (urlObj.pathname.includes('//')) {
+        setError("Invalid URL format. Please remove any double slashes from the URL.");
+        return;
+      }
+
+      // Check if hostname looks valid (has at least one dot and valid TLD)
+      if (!urlObj.hostname.includes('.') || urlObj.hostname.startsWith('.') || urlObj.hostname.endsWith('.')) {
+        setError("Please enter a valid domain (e.g., example.com)");
+        return;
+      }
     } catch {
       setError("Please enter a valid URL (e.g., example.com or https://example.com)");
       return;
