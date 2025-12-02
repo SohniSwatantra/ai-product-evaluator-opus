@@ -11,6 +11,9 @@ import { BentoCard, BentoGrid } from "@/components/ui/bento-grid";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { type ProductEvaluation } from "@/types";
 import { Brain, Target, TrendingUp, Sparkles, BarChart3, Shield, TrendingDown, Minus } from "lucide-react";
+import { useUser } from "@stackframe/stack";
+
+const PENDING_EVALUATION_KEY = "pendingEvaluationJobId";
 
 export default function Home() {
   const [evaluation, setEvaluation] = useState<ProductEvaluation | null>(null);
@@ -18,6 +21,49 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const user = useUser();
+  const hasClaimedRef = useRef(false); // Prevent duplicate claim attempts
+
+  // Check for pending evaluation to claim after sign-in
+  useEffect(() => {
+    const claimPendingEvaluation = async () => {
+      // Only run if user is signed in and we haven't already claimed
+      if (!user || hasClaimedRef.current) return;
+
+      const pendingJobId = localStorage.getItem(PENDING_EVALUATION_KEY);
+      if (!pendingJobId) return;
+
+      hasClaimedRef.current = true; // Mark as attempted
+
+      try {
+        const response = await fetch("/api/evaluations/claim", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jobId: pendingJobId }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.evaluation) {
+            setEvaluation(data.evaluation);
+            setIsShowcaseView(false); // This was their evaluation, not showcase
+            console.log("Successfully claimed pending evaluation");
+          }
+        } else {
+          console.log("Failed to claim evaluation - may already be claimed or not found");
+        }
+      } catch (error) {
+        console.error("Error claiming pending evaluation:", error);
+      } finally {
+        // Clear localStorage regardless of success/failure
+        localStorage.removeItem(PENDING_EVALUATION_KEY);
+      }
+    };
+
+    claimPendingEvaluation();
+  }, [user]);
 
   // Poll for job status
   useEffect(() => {
@@ -90,6 +136,12 @@ export default function Home() {
       if (data.jobId) {
         // Async mode - start polling
         setJobId(data.jobId);
+
+        // Store jobId in localStorage for non-signed-in users
+        // This allows claiming the evaluation after sign-in
+        if (!user) {
+          localStorage.setItem(PENDING_EVALUATION_KEY, data.jobId);
+        }
       } else {
         // Sync mode fallback (shouldn't happen in production)
         setEvaluation(data);
