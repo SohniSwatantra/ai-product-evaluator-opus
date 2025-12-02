@@ -26,7 +26,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
   const [selectedModelData, setSelectedModelData] = useState<AXModelEvaluation | null>(null);
   const [councilResult, setCouncilResult] = useState<AXCouncilResult | null>(null);
   const [councilReady, setCouncilReady] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [processingModels, setProcessingModels] = useState<Set<string>>(new Set());
   const [runningCouncil, setRunningCouncil] = useState(false);
 
   // Use the passed agentExperience as default/initial data
@@ -92,7 +92,11 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
   const runModelEvaluation = async (modelId: string) => {
     if (!evaluationId) return;
 
-    setLoading(true);
+    // Prevent duplicate runs
+    if (processingModels.has(modelId)) return;
+
+    // Add to processing set
+    setProcessingModels(prev => new Set(prev).add(modelId));
     setSelectedModel(modelId);
 
     // Update status to processing
@@ -125,7 +129,12 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
         prev.map(m => m.model_id === modelId ? { ...m, status: 'failed' } : m)
       );
     } finally {
-      setLoading(false);
+      // Remove from processing set
+      setProcessingModels(prev => {
+        const next = new Set(prev);
+        next.delete(modelId);
+        return next;
+      });
       // Refresh status to check if council is ready
       fetchStatus();
     }
@@ -262,7 +271,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
               const status = getStatusFromEvaluationId(model.model_id);
               const isSelected = selectedModel === model.model_id;
               const isCompleted = status?.status === 'completed';
-              const isProcessing = status?.status === 'processing';
+              const isProcessing = status?.status === 'processing' || processingModels.has(model.model_id);
               const isFailed = status?.status === 'failed';
 
               return (
