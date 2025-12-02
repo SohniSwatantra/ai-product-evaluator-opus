@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift } from "lucide-react";
 import { useUser } from "@stackframe/stack";
 import { cn } from "@/lib/utils";
 import { useCreditBalance } from "@/components/credits/credit-balance";
@@ -13,15 +13,15 @@ const CREDIT_PACKS = [
   {
     id: "starter",
     name: "Starter",
-    credits: 5,
-    price: "$5",
-    pricePerCredit: "$1.00",
+    credits: 30,
+    price: "$29",
+    pricePerCredit: "$0.97",
     description: "Perfect for trying out",
     icon: Sparkles,
     popular: false,
     color: "blue",
     features: [
-      "5 model evaluation runs",
+      "30 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -30,16 +30,16 @@ const CREDIT_PACKS = [
   {
     id: "pro",
     name: "Pro",
-    credits: 20,
-    price: "$15",
-    pricePerCredit: "$0.75",
+    credits: 60,
+    price: "$49",
+    pricePerCredit: "$0.82",
     description: "Best value for regular users",
     icon: Zap,
     popular: true,
     color: "purple",
-    savings: "Save 25%",
+    savings: "Save 18%",
     features: [
-      "20 model evaluation runs",
+      "60 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -49,16 +49,16 @@ const CREDIT_PACKS = [
   {
     id: "agency",
     name: "Agency",
-    credits: 100,
-    price: "$50",
-    pricePerCredit: "$0.50",
+    credits: 200,
+    price: "$129",
+    pricePerCredit: "$0.65",
     description: "For teams and agencies",
     icon: Building2,
     popular: false,
     color: "amber",
-    savings: "Save 50%",
+    savings: "Save 33%",
     features: [
-      "100 model evaluation runs",
+      "200 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -121,6 +121,17 @@ export default function PricingPage() {
       <Navbar />
       <main className="container mx-auto px-6 pt-32 pb-20">
         <div className="max-w-5xl mx-auto">
+          {/* Free Credits Banner */}
+          <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center gap-3">
+            <Gift className="w-6 h-6 text-green-400" />
+            <p className="text-lg font-semibold text-green-300">
+              10 Free Credits to Start
+              <span className="text-green-400/80 font-normal ml-2">
+                — Good enough for 2 full evaluations with multi-models!
+              </span>
+            </p>
+          </div>
+
           {/* Header */}
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500/20 text-purple-300 text-sm mb-4">
