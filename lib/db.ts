@@ -852,36 +852,37 @@ export async function seedAXModelConfigs(): Promise<void> {
     }
 
     // Model IDs sourced from https://openrouter.ai/models
+    // Note: Claude Opus 4.5 is the default model used by the app, so not included here
     const initialConfigs = [
       {
-        model_id: "gpt-4o",
-        display_name: "GPT-4o",
+        model_id: "gpt-5.1",
+        display_name: "GPT-5.1",
         provider: "OpenAI",
-        openrouter_model_id: "openai/gpt-4o",
+        openrouter_model_id: "openai/gpt-5.1",
         is_enabled: true,
         sort_order: 1
       },
       {
-        model_id: "gemini-2.0-flash",
-        display_name: "Gemini 2.0 Flash",
+        model_id: "gemini-3-pro-preview",
+        display_name: "Gemini 3 Pro Preview",
         provider: "Google",
-        openrouter_model_id: "google/gemini-2.0-flash-001",
+        openrouter_model_id: "google/gemini-3-pro-preview",
         is_enabled: true,
         sort_order: 2
       },
       {
-        model_id: "claude-3.5-sonnet",
-        display_name: "Claude 3.5 Sonnet",
+        model_id: "claude-sonnet-4.5",
+        display_name: "Claude Sonnet 4.5",
         provider: "Anthropic",
-        openrouter_model_id: "anthropic/claude-3.5-sonnet",
+        openrouter_model_id: "anthropic/claude-sonnet-4.5",
         is_enabled: true,
         sort_order: 3
       },
       {
-        model_id: "perplexity-sonar-pro",
-        display_name: "Perplexity Sonar Pro",
-        provider: "Perplexity",
-        openrouter_model_id: "perplexity/sonar-pro",
+        model_id: "grok-4.1-fast",
+        display_name: "Grok 4.1 Fast",
+        provider: "xAI",
+        openrouter_model_id: "x-ai/grok-4.1-fast:free",
         is_enabled: true,
         sort_order: 4
       }
