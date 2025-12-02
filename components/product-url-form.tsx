@@ -240,15 +240,10 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
                 <QuantumPulseLoader />
               ) : !user ? (
                 <>Sign in to Analyze</>
-              ) : hasInsufficientCredits ? (
-                <>
-                  <Coins className="w-5 h-5" />
-                  Buy Credits to Analyze
-                </>
               ) : (
                 <>
                   <Search className="w-5 h-5" />
-                  Analyze ({CREDIT_COST} credit)
+                  Analyze
                 </>
               )}
             </button>
