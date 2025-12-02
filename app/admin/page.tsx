@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins } from "lucide-react";
 import type { AXModelConfig } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -25,9 +25,58 @@ export default function AdminPage() {
     sort_order: 0
   });
 
+  // Credits state
+  const [creditsInput, setCreditsInput] = useState<string>("300");
+  const [currentBalance, setCurrentBalance] = useState<number | null>(null);
+  const [settingCredits, setSettingCredits] = useState(false);
+  const [creditsMessage, setCreditsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     checkAdminStatus();
+    fetchCurrentBalance();
   }, []);
+
+  const fetchCurrentBalance = async () => {
+    try {
+      const response = await fetch("/api/user/credits");
+      const data = await response.json();
+      if (data.balance !== undefined) {
+        setCurrentBalance(data.balance);
+      }
+    } catch (err) {
+      console.error("Failed to fetch balance:", err);
+    }
+  };
+
+  const handleSetCredits = async () => {
+    const credits = parseInt(creditsInput, 10);
+    if (isNaN(credits) || credits < 0) {
+      setCreditsMessage({ type: 'error', text: 'Please enter a valid number' });
+      return;
+    }
+
+    try {
+      setSettingCredits(true);
+      setCreditsMessage(null);
+      const response = await fetch("/api/admin/set-credits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credits })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setCurrentBalance(credits);
+        setCreditsMessage({ type: 'success', text: `Credits set to ${credits}` });
+      } else {
+        setCreditsMessage({ type: 'error', text: data.error || 'Failed to set credits' });
+      }
+    } catch (err: any) {
+      setCreditsMessage({ type: 'error', text: err.message || 'Failed to set credits' });
+    } finally {
+      setSettingCredits(false);
+    }
+  };
 
   const checkAdminStatus = async () => {
     try {
@@ -213,7 +262,7 @@ export default function AdminPage() {
           </div>
 
           {/* Admin Navigation */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => router.push("/admin/showcase")}
               className="p-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-left"
@@ -234,6 +283,41 @@ export default function AdminPage() {
               <p className="text-sm text-neutral-400">
                 Configure AI models for Agent Experience evaluations (shown below).
               </p>
+            </div>
+
+            {/* Set Credits Card */}
+            <div className="p-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+              <div className="flex items-center gap-3 mb-2">
+                <Coins className="w-6 h-6 text-emerald-400" />
+                <h3 className="text-lg font-semibold text-white">Set Credits</h3>
+              </div>
+              <p className="text-sm text-neutral-400 mb-3">
+                Current balance: <span className="text-emerald-400 font-bold">{currentBalance ?? '...'}</span>
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  value={creditsInput}
+                  onChange={(e) => setCreditsInput(e.target.value)}
+                  placeholder="300"
+                  className="flex-1 px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white text-sm"
+                />
+                <button
+                  onClick={handleSetCredits}
+                  disabled={settingCredits}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium"
+                >
+                  {settingCredits ? <Loader2 className="w-4 h-4 animate-spin" /> : "Set"}
+                </button>
+              </div>
+              {creditsMessage && (
+                <p className={cn(
+                  "text-xs mt-2",
+                  creditsMessage.type === 'success' ? "text-emerald-400" : "text-red-400"
+                )}>
+                  {creditsMessage.text}
+                </p>
+              )}
             </div>
           </div>
 
