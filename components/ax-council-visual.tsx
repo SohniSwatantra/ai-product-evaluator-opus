@@ -94,10 +94,6 @@ export function AXCouncilVisual({ councilResult }: AXCouncilVisualProps) {
     return null;
   }
 
-  // Split models for layout (top 1, bottom 4 around leader)
-  const topModel = model_scores[0];
-  const bottomModels = model_scores.slice(1);
-
   return (
     <div className="mt-6 p-4 sm:p-6 rounded-2xl bg-gradient-to-b from-neutral-900 to-neutral-950 dark:from-neutral-950 dark:to-black border border-neutral-800">
       {/* Header */}
@@ -112,54 +108,28 @@ export function AXCouncilVisual({ councilResult }: AXCouncilVisualProps) {
 
       {/* Council Layout - Desktop */}
       <div className="hidden md:block">
-        {/* Top Model */}
+        {/* AX Council Leader at TOP - overseeing all models */}
         <div className="flex justify-center mb-8">
-          {topModel && (
-            <CouncilMember
-              displayName={topModel.display_name}
-              modelId={topModel.model_id}
-              axScore={topModel.ax_score}
-              index={0}
-            />
-          )}
-        </div>
-
-        {/* Middle Row: 2 Models + Leader + 2 Models */}
-        <div className="flex justify-center items-center gap-8 lg:gap-12 mb-8">
-          {/* Left models */}
-          <div className="flex gap-6">
-            {bottomModels.slice(0, 2).map((score, idx) => (
-              <CouncilMember
-                key={score.model_id}
-                displayName={score.display_name}
-                modelId={score.model_id}
-                axScore={score.ax_score}
-                index={idx + 1}
-              />
-            ))}
-          </div>
-
-          {/* Leader (Council) */}
           <CouncilMember
             displayName="AX Council"
             modelId="council"
             axScore={final_ax_score}
             isLeader
-            index={3}
+            index={0}
           />
+        </div>
 
-          {/* Right models */}
-          <div className="flex gap-6">
-            {bottomModels.slice(2, 4).map((score, idx) => (
-              <CouncilMember
-                key={score.model_id}
-                displayName={score.display_name}
-                modelId={score.model_id}
-                axScore={score.ax_score}
-                index={idx + 4}
-              />
-            ))}
-          </div>
+        {/* All 5 models in a row below */}
+        <div className="flex justify-center items-center gap-6 lg:gap-8">
+          {model_scores.map((score, idx) => (
+            <CouncilMember
+              key={score.model_id}
+              displayName={score.display_name}
+              modelId={score.model_id}
+              axScore={score.ax_score}
+              index={idx + 1}
+            />
+          ))}
         </div>
       </div>
 
