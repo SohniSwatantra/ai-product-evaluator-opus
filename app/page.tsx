@@ -14,6 +14,7 @@ import { Brain, Target, TrendingUp, Sparkles, BarChart3, Shield, TrendingDown, M
 
 export default function Home() {
   const [evaluation, setEvaluation] = useState<ProductEvaluation | null>(null);
+  const [isShowcaseView, setIsShowcaseView] = useState(false); // Track if viewing a showcase evaluation
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
@@ -32,6 +33,7 @@ export default function Home() {
         if (data.status === "completed" && data.result) {
           // Job completed successfully
           setEvaluation(data.result);
+          setIsShowcaseView(false); // New analysis, not showcase
           setIsAnalyzing(false);
           setJobId(null);
 
@@ -164,7 +166,10 @@ export default function Home() {
             {/* Evaluation History */}
             <section className="mt-16 mb-10">
               <EvaluationHistory
-                onSelectEvaluation={(evaluation) => setEvaluation(evaluation)}
+                onSelectEvaluation={(evaluation) => {
+                  setEvaluation(evaluation);
+                  setIsShowcaseView(true); // Viewing from history = showcase
+                }}
                 limit={10}
               />
             </section>
@@ -296,7 +301,11 @@ export default function Home() {
         <main className="container mx-auto px-6 pt-32 pb-12">
           <EvaluationDashboard
             evaluation={evaluation}
-            onNewAnalysis={() => setEvaluation(null)}
+            onNewAnalysis={() => {
+              setEvaluation(null);
+              setIsShowcaseView(false);
+            }}
+            isShowcase={isShowcaseView}
           />
         </main>
       )}
