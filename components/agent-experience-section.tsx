@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw } from "lucide-react";
+import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw, Star } from "lucide-react";
 import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult } from "@/types";
 import { AXScoreGauge } from "@/components/charts/ax-score-gauge";
 import { cn } from "@/lib/utils";
@@ -353,6 +353,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
                     <Users className="w-4 h-4" />
                   )}
                   <span>AX Council</span>
+                  <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                   {councilResult && (
                     <span className="ml-1 text-xs opacity-75">({councilResult.final_ax_score})</span>
                   )}
