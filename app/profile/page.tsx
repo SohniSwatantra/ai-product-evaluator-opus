@@ -162,7 +162,8 @@ export default function ProfilePage() {
                 {evaluations.map((evaluation) => (
                   <div
                     key={evaluation.id}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-[#111] hover:border-white/20 transition-colors"
+                    onClick={() => handleViewEvaluation(evaluation)}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-[#111] hover:border-white/20 transition-colors cursor-pointer"
                   >
                     {/* URL */}
                     <div className="flex-1 min-w-0">
@@ -193,7 +194,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-1 pl-2 border-l border-white/10">
+                    <div className="flex items-center gap-1 pl-2 border-l border-white/10" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => handleViewEvaluation(evaluation)}
                         className="p-2 rounded-lg hover:bg-blue-500/10 text-blue-400 transition-colors"

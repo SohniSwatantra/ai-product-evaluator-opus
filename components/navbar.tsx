@@ -40,21 +40,21 @@ export function Navbar() {
   return (
     <div className="fixed top-10 inset-x-0 max-w-5xl mx-auto z-50 px-4">
       <Menu setActive={setActive}>
-        <div className="flex items-center gap-2 px-2">
+        <div className="flex items-center gap-2 px-2 cursor-pointer" onClick={() => router.push("/")}>
           <Brain className="w-5 h-5 text-[#4A044E]" />
           <span className="font-bold font-mono text-[#4A044E] text-lg">AI Product Evaluator</span>
         </div>
 
         <a
-          href="#features"
-          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity"
+          href="/#features"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity cursor-pointer"
         >
           Features
         </a>
 
         <a
           href="/about"
-          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity cursor-pointer"
         >
           About
         </a>
