@@ -19,9 +19,10 @@ import { useUser } from "@stackframe/stack";
 interface EvaluationDashboardProps {
   evaluation: ProductEvaluation;
   onNewAnalysis: () => void;
+  isShowcase?: boolean; // Showcase evaluations are fully viewable without auth
 }
 
-export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDashboardProps) {
+export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = false }: EvaluationDashboardProps) {
   const user = useUser();
 
   // Normalize demographics to handle legacy format
@@ -319,11 +320,11 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis }: EvaluationDas
         </div>
       )}
 
-      {/* AUTH GATE - Show for non-authenticated users */}
-      {!user && <AuthGate />}
+      {/* AUTH GATE - Show for non-authenticated users viewing non-showcase evaluations */}
+      {!user && !isShowcase && <AuthGate />}
 
-      {/* PROTECTED CONTENT - Always rendered with conditional blur */}
-      <div className={!user ? "protected-content-blur" : ""}>
+      {/* PROTECTED CONTENT - Blur only for non-authenticated, non-showcase views */}
+      <div className={!user && !isShowcase ? "protected-content-blur" : ""}>
       {/* SSR Distribution Visualization - ENHANCED WITH CHART! */}
       {normalizedEvaluation.ssrDistribution && (
         <div className="p-8 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/20 backdrop-blur-sm">
