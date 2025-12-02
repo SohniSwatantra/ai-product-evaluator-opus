@@ -925,6 +925,29 @@ export async function getUserCredits(userId: string): Promise<number> {
       return FREE_CREDITS_FOR_NEW_USERS;
     }
 
+    // Check if existing user with 0 balance has received welcome bonus
+    // (for users created before free credits feature was added)
+    if (results[0].balance === 0) {
+      const bonusCheck = await sql`
+        SELECT id FROM credit_transactions
+        WHERE user_id = ${userId} AND type = 'bonus' AND description LIKE 'Welcome bonus%'
+        LIMIT 1
+      `;
+
+      if (bonusCheck.length === 0) {
+        // Grant welcome bonus to existing user who never received it
+        await sql`
+          UPDATE user_credits SET balance = ${FREE_CREDITS_FOR_NEW_USERS} WHERE user_id = ${userId}
+        `;
+        await sql`
+          INSERT INTO credit_transactions (user_id, amount, type, description, balance_after)
+          VALUES (${userId}, ${FREE_CREDITS_FOR_NEW_USERS}, 'bonus', 'Welcome bonus - 10 free credits', ${FREE_CREDITS_FOR_NEW_USERS})
+        `;
+        console.log(`Existing user ${userId} received ${FREE_CREDITS_FOR_NEW_USERS} free credits (retroactive)`);
+        return FREE_CREDITS_FOR_NEW_USERS;
+      }
+    }
+
     return results[0].balance;
   } catch (error) {
     console.error("Error fetching user credits:", error);
