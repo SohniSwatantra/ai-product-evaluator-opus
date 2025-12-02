@@ -214,17 +214,17 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
   const allModelsComplete = modelStatuses.length > 0 && modelStatuses.every(m => m.status === 'completed');
 
   return (
-    <div className="p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
+    <div className="p-4 sm:p-8 rounded-2xl border-2 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/20 backdrop-blur-sm">
       {/* Header */}
-      <div className="flex items-start gap-3 mb-6">
-        <Bot className="w-8 h-8 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-1" />
+      <div className="flex items-start gap-2 sm:gap-3 mb-6">
+        <Bot className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-1" />
         <div className="flex-1">
-          <h3 className="text-2xl font-semibold text-black dark:text-white mb-2">
+          <h3 className="text-xl sm:text-2xl font-semibold text-black dark:text-white mb-2">
             Agent Experience (AX)
           </h3>
-          <div className="flex items-start gap-2 p-3 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
+          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
             <Info className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-purple-900 dark:text-purple-200">
+            <p className="text-xs sm:text-sm text-purple-900 dark:text-purple-200">
               <strong>What is AX?</strong> Agent Experience measures how easily AI agents (like ChatGPT, Claude, Perplexity) can access, read, and understand your website. Good AX means agents can quickly grasp what your product does, who it's for, and how to get information—leading to better AI-powered recommendations and visibility.
             </p>
           </div>
@@ -374,15 +374,15 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
 
       {/* Council Result Display */}
       {selectedModel === 'council' && councilResult && (
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 border border-purple-200 dark:border-purple-700">
-          <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
+        <div className="mb-6 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/40 dark:to-pink-900/40 border border-purple-200 dark:border-purple-700">
+          <h4 className="text-base sm:text-lg font-semibold text-purple-900 dark:text-purple-100 mb-3">
             AX Council Final Assessment
           </h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4">
             {councilResult.model_scores.map((score) => (
-              <div key={score.model_id} className="p-3 rounded-lg bg-white/60 dark:bg-black/20">
-                <p className="text-xs text-neutral-600 dark:text-neutral-400">{score.display_name}</p>
-                <p className="text-lg font-bold text-purple-700 dark:text-purple-300">{score.ax_score}</p>
+              <div key={score.model_id} className="p-2 sm:p-3 rounded-lg bg-white/60 dark:bg-black/20">
+                <p className="text-[10px] sm:text-xs text-neutral-600 dark:text-neutral-400 truncate">{score.display_name}</p>
+                <p className="text-base sm:text-lg font-bold text-purple-700 dark:text-purple-300">{score.ax_score}</p>
               </div>
             ))}
           </div>
@@ -435,7 +435,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       )}
 
       {/* Agent Accessibility Analysis */}
-      <div className="mb-8 p-6 rounded-xl bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800">
+      <div className="mb-8 p-4 sm:p-6 rounded-xl bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800">
         <h4 className="text-lg font-semibold text-black dark:text-white mb-3">
           Agent Accessibility Analysis
         </h4>
@@ -445,7 +445,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       </div>
 
       {/* Recommendations */}
-      <div className="p-6 rounded-xl bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800">
+      <div className="p-4 sm:p-6 rounded-xl bg-white dark:bg-neutral-900 border border-purple-200 dark:border-purple-800">
         <h4 className="text-lg font-semibold text-black dark:text-white mb-4">
           Recommendations to Improve Agent Experience
         </h4>
@@ -466,8 +466,8 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       </div>
 
       {/* Footer Note */}
-      <div className="mt-6 p-4 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
-        <p className="text-xs text-purple-900 dark:text-purple-200">
+      <div className="mt-6 p-3 sm:p-4 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
+        <p className="text-[10px] sm:text-xs text-purple-900 dark:text-purple-200">
           <strong>Why AX Matters:</strong> Based on Netlify CEO Matt Biilmann's Agent Net Promoter Score (ANPS) concept. As AI agents become primary information gatekeepers, optimizing for agent experience will be as critical as traditional SEO. Websites with high AX scores will be more likely recommended by AI assistants to users.
         </p>
       </div>

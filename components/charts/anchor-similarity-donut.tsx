@@ -41,16 +41,16 @@ export function AnchorSimilarityDonut({ anchorSimilarities }: AnchorSimilarityDo
 
   return (
     <div className="space-y-4">
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
             labelLine={false}
             label={renderLabel}
-            outerRadius={100}
-            innerRadius={60}
+            outerRadius={80}
+            innerRadius={50}
             fill="#8884d8"
             dataKey="value"
           >
@@ -85,18 +85,18 @@ export function AnchorSimilarityDonut({ anchorSimilarities }: AnchorSimilarityDo
       </div>
 
       {/* Tier indicators */}
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="p-2 rounded-lg bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 text-center">
+      <div className="grid grid-cols-3 gap-1 sm:gap-2 text-[10px] sm:text-xs">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 text-center">
           <div className="font-semibold text-[#ff6b6b]">🔴 Low</div>
-          <div className="text-neutral-600 dark:text-neutral-400 mt-1">Unlikely to purchase</div>
+          <div className="text-neutral-600 dark:text-neutral-400 mt-1 hidden sm:block">Unlikely to purchase</div>
         </div>
-        <div className="p-2 rounded-lg bg-[#ffd93d]/10 border border-[#ffd93d]/30 text-center">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-[#ffd93d]/10 border border-[#ffd93d]/30 text-center">
           <div className="font-semibold text-[#d4b000]">🟡 Middle</div>
-          <div className="text-neutral-600 dark:text-neutral-400 mt-1">Uncertain/Considering</div>
+          <div className="text-neutral-600 dark:text-neutral-400 mt-1 hidden sm:block">Uncertain/Considering</div>
         </div>
-        <div className="p-2 rounded-lg bg-[#66ff96]/10 border border-[#66ff96]/30 text-center">
+        <div className="p-1.5 sm:p-2 rounded-lg bg-[#66ff96]/10 border border-[#66ff96]/30 text-center">
           <div className="font-semibold text-[#00a851]">🟢 High</div>
-          <div className="text-neutral-600 dark:text-neutral-400 mt-1">Strong intent to buy</div>
+          <div className="text-neutral-600 dark:text-neutral-400 mt-1 hidden sm:block">Strong intent to buy</div>
         </div>
       </div>
     </div>

@@ -21,20 +21,22 @@ export function SSRDistributionChart({ distribution }: SSRDistributionChartProps
   const colors = ["#ff6b6b", "#ffa07a", "#ffd93d", "#b3ffcb", "#66ff96"];
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+    <ResponsiveContainer width="100%" height={280}>
+      <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 50 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" className="dark:stroke-neutral-700" />
         <XAxis
           dataKey="rating"
-          angle={-45}
+          angle={-35}
           textAnchor="end"
-          height={80}
-          tick={{ fill: "#6b7280", fontSize: 11 }}
+          height={70}
+          tick={{ fill: "#6b7280", fontSize: 9 }}
           className="dark:fill-neutral-400"
+          interval={0}
         />
         <YAxis
-          label={{ value: "Probability (%)", angle: -90, position: "insideLeft", fill: "#6b7280" }}
-          tick={{ fill: "#6b7280", fontSize: 11 }}
+          label={{ value: "Prob (%)", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 9 }}
+          tick={{ fill: "#6b7280", fontSize: 9 }}
+          width={40}
         />
         <Tooltip
           contentStyle={{
