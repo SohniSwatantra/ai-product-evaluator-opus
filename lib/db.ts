@@ -1133,6 +1133,77 @@ export async function seedAXModelConfigs(): Promise<void> {
 }
 
 // ============================================
+// Claim Anonymous Evaluations
+// ============================================
+
+/**
+ * Claim an anonymous evaluation by linking it to a user account
+ * This is used when a non-signed-in user runs an evaluation, then signs in
+ * The evaluation (with user_id = null) gets linked to their account
+ */
+export async function claimEvaluationByJobId(jobId: string, userId: string): Promise<ProductEvaluation | null> {
+  try {
+    // First, get the job to find the evaluation ID
+    const jobResults = await sql`
+      SELECT result FROM evaluation_jobs WHERE id = ${jobId}
+    `;
+
+    if (jobResults.length === 0 || !jobResults[0].result) {
+      console.log(`No completed job found for jobId: ${jobId}`);
+      return null;
+    }
+
+    const evaluationId = jobResults[0].result?.id;
+    if (!evaluationId) {
+      console.log(`Job ${jobId} result has no evaluation ID`);
+      return null;
+    }
+
+    // Check if the evaluation exists and is unclaimed (user_id is null)
+    const evalResults = await sql`
+      SELECT user_id FROM evaluations WHERE id = ${evaluationId}
+    `;
+
+    if (evalResults.length === 0) {
+      console.log(`No evaluation found with ID: ${evaluationId}`);
+      return null;
+    }
+
+    // If already claimed by someone, don't allow claiming
+    if (evalResults[0].user_id !== null) {
+      console.log(`Evaluation ${evaluationId} already claimed by user: ${evalResults[0].user_id}`);
+      // If it's claimed by the same user, just return the evaluation
+      if (evalResults[0].user_id === userId) {
+        return await getEvaluationById(evaluationId);
+      }
+      return null;
+    }
+
+    // Claim the evaluation by updating user_id
+    await sql`
+      UPDATE evaluations
+      SET user_id = ${userId}
+      WHERE id = ${evaluationId} AND user_id IS NULL
+    `;
+
+    // Also update the job's user_id for consistency
+    await sql`
+      UPDATE evaluation_jobs
+      SET user_id = ${userId}
+      WHERE id = ${jobId}
+    `;
+
+    console.log(`Evaluation ${evaluationId} claimed by user ${userId}`);
+
+    // Return the full evaluation
+    return await getEvaluationById(evaluationId);
+  } catch (error) {
+    console.error("Error claiming evaluation:", error);
+    throw error;
+  }
+}
+
+// ============================================
 // Showcase Evaluations (for landing page)
 // ============================================
 
