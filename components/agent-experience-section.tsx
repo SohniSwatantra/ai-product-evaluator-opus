@@ -28,7 +28,6 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
   const [councilReady, setCouncilReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [runningCouncil, setRunningCouncil] = useState(false);
-  const [showMultiModel, setShowMultiModel] = useState(false);
 
   // Use the passed agentExperience as default/initial data
   const { axScore, anps, factors, agentAccessibility, recommendations } =
@@ -84,10 +83,10 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
   }, [evaluationId]);
 
   useEffect(() => {
-    if (evaluationId && showMultiModel) {
+    if (evaluationId) {
       fetchStatus();
     }
-  }, [evaluationId, showMultiModel, fetchStatus]);
+  }, [evaluationId, fetchStatus]);
 
   // Run evaluation for a specific model
   const runModelEvaluation = async (modelId: string) => {
@@ -222,146 +221,135 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
         </div>
       </div>
 
-      {/* Model Tabs - Only show if evaluationId is available */}
-      {evaluationId && models.length > 0 && (
+      {/* Model Tabs - Always show if evaluationId is available */}
+      {evaluationId && (
         <div className="mb-6">
-          {!showMultiModel ? (
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+              Multi-Model Evaluation
+            </h4>
             <button
-              onClick={() => setShowMultiModel(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/40 rounded-lg transition-colors border border-purple-200 dark:border-purple-800"
+              onClick={fetchStatus}
+              className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
+              title="Refresh status"
             >
-              <Users className="w-4 h-4" />
-              Compare with Multiple AI Models
+              <RefreshCw className="w-4 h-4" />
             </button>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
-                  Multi-Model Evaluation
-                </h4>
-                <button
-                  onClick={fetchStatus}
-                  className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-                  title="Refresh status"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* Default Claude Opus 4.5 (from initial evaluation) - Always first, green */}
+            <button
+              onClick={() => {
+                setSelectedModel(null);
+                setSelectedModelData(null);
+              }}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                selectedModel === null && selectedModel !== 'council'
+                  ? "bg-green-600 text-white border-green-600"
+                  : "bg-white dark:bg-neutral-900 text-green-700 dark:text-green-400 border-green-500 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Claude Opus 4.5</span>
+                <span className="ml-1 text-xs opacity-75">({agentExperience.axScore})</span>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {/* Default Claude evaluation (from initial load) */}
+            </button>
+
+            {/* Model tabs from API (configured via admin) */}
+            {models.map((model) => {
+              const status = getStatusFromEvaluationId(model.model_id);
+              const isSelected = selectedModel === model.model_id;
+              const isCompleted = status?.status === 'completed';
+              const isProcessing = status?.status === 'processing';
+              const isFailed = status?.status === 'failed';
+
+              return (
                 <button
+                  key={model.model_id}
                   onClick={() => {
-                    setSelectedModel(null);
-                    setSelectedModelData(null);
-                  }}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-                    selectedModel === null && !councilResult
-                      ? "bg-purple-600 text-white border-purple-600"
-                      : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-purple-400"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    <span>Default</span>
-                  </div>
-                </button>
-
-                {/* Model tabs from API */}
-                {models.map((model) => {
-                  const status = getStatusFromEvaluationId(model.model_id);
-                  const isSelected = selectedModel === model.model_id;
-                  const isCompleted = status?.status === 'completed';
-                  const isProcessing = status?.status === 'processing';
-                  const isFailed = status?.status === 'failed';
-
-                  return (
-                    <button
-                      key={model.model_id}
-                      onClick={() => {
-                        if (isCompleted) {
-                          fetchModelData(model.model_id);
-                        } else if (!isProcessing) {
-                          runModelEvaluation(model.model_id);
-                        }
-                      }}
-                      disabled={isProcessing}
-                      className={cn(
-                        "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-                        isSelected
-                          ? "bg-purple-600 text-white border-purple-600"
-                          : isCompleted
-                            ? "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-green-400 dark:border-green-600 hover:border-purple-400"
-                            : isFailed
-                              ? "bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700"
-                              : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-purple-400",
-                        isProcessing && "opacity-75 cursor-wait"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        {isProcessing ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : isCompleted ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : isFailed ? (
-                          <XCircle className="w-4 h-4 text-red-500" />
-                        ) : (
-                          <Play className="w-4 h-4" />
-                        )}
-                        <span>{model.display_name}</span>
-                        {isCompleted && status?.ax_score !== null && (
-                          <span className="ml-1 text-xs opacity-75">({status.ax_score})</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {/* AX Council Tab */}
-                <button
-                  onClick={() => {
-                    if (councilResult) {
-                      setSelectedModel('council');
-                      setSelectedModelData(null);
-                    } else if (allModelsComplete) {
-                      runCouncil();
+                    if (isCompleted) {
+                      fetchModelData(model.model_id);
+                    } else if (!isProcessing) {
+                      runModelEvaluation(model.model_id);
                     }
                   }}
-                  disabled={!allModelsComplete && !councilResult}
+                  disabled={isProcessing}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium transition-all border",
-                    selectedModel === 'council'
-                      ? "bg-gradient-to-r from-purple-600 to-pink-600 text-white border-purple-600"
-                      : councilResult
-                        ? "bg-white dark:bg-neutral-900 text-purple-700 dark:text-purple-300 border-purple-400 dark:border-purple-600 hover:border-purple-500"
-                        : allModelsComplete
-                          ? "bg-white dark:bg-neutral-900 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 hover:border-purple-500"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 border-neutral-200 dark:border-neutral-700 cursor-not-allowed opacity-50"
+                    isSelected
+                      ? "bg-purple-600 text-white border-purple-600"
+                      : isCompleted
+                        ? "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-green-400 dark:border-green-600 hover:border-purple-400"
+                        : isFailed
+                          ? "bg-white dark:bg-neutral-900 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700"
+                          : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700 hover:border-purple-400",
+                    isProcessing && "opacity-75 cursor-wait"
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    {runningCouncil ? (
+                    {isProcessing ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : councilResult ? (
+                    ) : isCompleted ? (
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    ) : isFailed ? (
+                      <XCircle className="w-4 h-4 text-red-500" />
                     ) : (
-                      <Users className="w-4 h-4" />
+                      <Play className="w-4 h-4" />
                     )}
-                    <span>AX Council</span>
-                    {councilResult && (
-                      <span className="ml-1 text-xs opacity-75">({councilResult.final_ax_score})</span>
+                    <span>{model.display_name}</span>
+                    {isCompleted && status?.ax_score !== null && (
+                      <span className="ml-1 text-xs opacity-75">({status.ax_score})</span>
                     )}
                   </div>
                 </button>
-              </div>
+              );
+            })}
 
-              {/* Council info message */}
-              {!allModelsComplete && !councilResult && (
-                <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-                  Run all model evaluations to unlock the AX Council aggregate score.
-                </p>
+            {/* AX Council Tab - Yellow/Orange */}
+            <button
+              onClick={() => {
+                if (councilResult) {
+                  setSelectedModel('council');
+                  setSelectedModelData(null);
+                } else if (allModelsComplete) {
+                  runCouncil();
+                }
+              }}
+              disabled={!allModelsComplete && !councilResult}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                selectedModel === 'council'
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500"
+                  : councilResult
+                    ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-500 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                    : allModelsComplete
+                      ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 border-neutral-200 dark:border-neutral-700 cursor-not-allowed opacity-50"
               )}
-            </>
+            >
+              <div className="flex items-center gap-2">
+                {runningCouncil ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : councilResult ? (
+                  <CheckCircle2 className="w-4 h-4 text-amber-500" />
+                ) : (
+                  <Users className="w-4 h-4" />
+                )}
+                <span>AX Council</span>
+                {councilResult && (
+                  <span className="ml-1 text-xs opacity-75">({councilResult.final_ax_score})</span>
+                )}
+              </div>
+            </button>
+          </div>
+
+          {/* Council info message */}
+          {!allModelsComplete && !councilResult && models.length > 0 && (
+            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
+              Run all model evaluations to unlock the AX Council aggregate score.
+            </p>
           )}
         </div>
       )}
