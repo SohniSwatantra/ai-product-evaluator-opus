@@ -99,6 +99,7 @@ export interface ProductEvaluation {
   recommendations: string[];
   sectionedRecommendations?: SectionRecommendation[]; // Section-by-section breakdown
   timestamp: string;
+  userId?: string; // Owner of the evaluation
   // SSR Methodology (Paper 2) fields
   ssrScore?: number;
   ssrConfidence?: number;

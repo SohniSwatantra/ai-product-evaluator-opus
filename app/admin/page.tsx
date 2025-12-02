@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star } from "lucide-react";
 import type { AXModelConfig } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -208,8 +208,38 @@ export default function AdminPage() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <h1 className="text-2xl font-bold text-white">AX Model Configuration</h1>
+              <h1 className="text-2xl font-bold text-white">Admin Console</h1>
             </div>
+          </div>
+
+          {/* Admin Navigation */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => router.push("/admin/showcase")}
+              className="p-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-left"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <Star className="w-6 h-6 text-amber-400" />
+                <h3 className="text-lg font-semibold text-white">Showcase Manager</h3>
+              </div>
+              <p className="text-sm text-neutral-400">
+                Manage which evaluations appear on the landing page for non-logged-in users.
+              </p>
+            </button>
+            <div className="p-6 rounded-2xl border border-purple-500/30 bg-purple-500/10">
+              <div className="flex items-center gap-3 mb-2">
+                <Power className="w-6 h-6 text-purple-400" />
+                <h3 className="text-lg font-semibold text-white">AX Model Configuration</h3>
+              </div>
+              <p className="text-sm text-neutral-400">
+                Configure AI models for Agent Experience evaluations (shown below).
+              </p>
+            </div>
+          </div>
+
+          {/* AX Models Section Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">AX Models</h2>
             <button
               onClick={() => setShowAddForm(true)}
               className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"

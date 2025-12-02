@@ -80,6 +80,20 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON evaluation_jobs(created_at DESC)
     `;
 
+    // Create showcase_evaluations table for landing page display
+    await sql`
+      CREATE TABLE IF NOT EXISTS showcase_evaluations (
+        id SERIAL PRIMARY KEY,
+        evaluation_id INTEGER NOT NULL UNIQUE,
+        display_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_showcase_display_order ON showcase_evaluations(display_order ASC)
+    `;
+
     console.log("Database initialized successfully");
   } catch (error) {
     console.error("Error initializing database:", error);
@@ -290,6 +304,7 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
         ax_recommendations,
         sectioned_recommendations,
         website_snapshot,
+        user_id,
         timestamp
       FROM evaluations
       WHERE id = ${id}
@@ -333,6 +348,7 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
       textualAnalysis: row.textual_analysis,
       methodologyComparison: row.methodology_comparison,
       timestamp: row.timestamp,
+      userId: row.user_id || undefined,
     };
 
     // Add AX data if available
@@ -1112,6 +1128,206 @@ export async function seedAXModelConfigs(): Promise<void> {
     console.log("AX model configs seeded successfully");
   } catch (error) {
     console.error("Error seeding AX model configs:", error);
+    throw error;
+  }
+}
+
+// ============================================
+// Showcase Evaluations (for landing page)
+// ============================================
+
+/**
+ * Get all showcase evaluation IDs with their details
+ */
+export async function getShowcaseEvaluationIds(): Promise<{ evaluationId: number; displayOrder: number }[]> {
+  try {
+    const results = await sql`
+      SELECT evaluation_id, display_order
+      FROM showcase_evaluations
+      ORDER BY display_order ASC
+    `;
+    return results.map((row: any) => ({
+      evaluationId: row.evaluation_id,
+      displayOrder: row.display_order,
+    }));
+  } catch (error) {
+    console.error("Error fetching showcase evaluation IDs:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get showcase evaluations with full evaluation data
+ */
+export async function getShowcaseEvaluations(limit: number = 10): Promise<ProductEvaluation[]> {
+  try {
+    const results = await sql`
+      SELECT
+        e.id,
+        e.url,
+        e.overall_score,
+        e.buying_intent_probability,
+        e.purchase_intent_anchor,
+        e.target_demographics,
+        e.product_attributes,
+        e.factors,
+        e.analysis,
+        e.demographic_impact,
+        e.recommendations,
+        e.ssr_score,
+        e.ssr_confidence,
+        e.ssr_margin_confidence,
+        e.ssr_distribution,
+        e.textual_analysis,
+        e.methodology_comparison,
+        e.ax_score,
+        e.anps,
+        e.ax_factors,
+        e.agent_accessibility,
+        e.ax_recommendations,
+        e.sectioned_recommendations,
+        e.website_snapshot,
+        e.user_id,
+        e.timestamp
+      FROM evaluations e
+      INNER JOIN showcase_evaluations s ON e.id = s.evaluation_id
+      ORDER BY s.display_order ASC
+      LIMIT ${limit}
+    `;
+
+    return results.map((row: any) => {
+      let demographics = row.target_demographics;
+      if (demographics && (!demographics.ageRange || !demographics.incomeTier)) {
+        demographics = {
+          ageRange: demographics.age || demographics.ageRange || "25-34",
+          gender: demographics.gender || "all",
+          incomeTier: demographics.income || demographics.incomeTier || "medium",
+          region: demographics.region || "north-america",
+          ...(demographics.ethnicity && { ethnicity: demographics.ethnicity }),
+        };
+      }
+
+      const evaluation: ProductEvaluation = {
+        id: row.id,
+        url: row.url,
+        overallScore: row.overall_score,
+        buyingIntentProbability: row.buying_intent_probability,
+        purchaseIntentAnchor: row.purchase_intent_anchor,
+        targetDemographics: demographics,
+        productAttributes: row.product_attributes,
+        factors: row.factors,
+        analysis: row.analysis,
+        demographicImpact: row.demographic_impact,
+        recommendations: row.recommendations,
+        ssrScore: row.ssr_score,
+        ssrConfidence: row.ssr_confidence,
+        ssrMarginConfidence: row.ssr_margin_confidence,
+        ssrDistribution: row.ssr_distribution,
+        textualAnalysis: row.textual_analysis,
+        methodologyComparison: row.methodology_comparison,
+        timestamp: row.timestamp,
+      };
+
+      if (row.ax_score && row.anps && row.ax_factors) {
+        evaluation.agentExperience = {
+          axScore: row.ax_score,
+          anps: row.anps,
+          factors: row.ax_factors,
+          agentAccessibility: row.agent_accessibility || "",
+          recommendations: row.ax_recommendations || [],
+        };
+      }
+
+      if (row.sectioned_recommendations) {
+        evaluation.sectionedRecommendations = row.sectioned_recommendations;
+      }
+
+      if (row.website_snapshot) {
+        evaluation.websiteSnapshot = row.website_snapshot;
+      }
+
+      return evaluation;
+    });
+  } catch (error) {
+    console.error("Error fetching showcase evaluations:", error);
+    throw error;
+  }
+}
+
+/**
+ * Check if an evaluation is in the showcase
+ */
+export async function isShowcaseEvaluation(evaluationId: number): Promise<boolean> {
+  try {
+    const results = await sql`
+      SELECT id FROM showcase_evaluations WHERE evaluation_id = ${evaluationId}
+    `;
+    return results.length > 0;
+  } catch (error) {
+    console.error("Error checking showcase evaluation:", error);
+    throw error;
+  }
+}
+
+/**
+ * Add an evaluation to the showcase
+ */
+export async function addShowcaseEvaluation(evaluationId: number, displayOrder?: number): Promise<void> {
+  try {
+    // Get max display order if not provided
+    if (displayOrder === undefined) {
+      const maxResult = await sql`
+        SELECT COALESCE(MAX(display_order), -1) + 1 as next_order FROM showcase_evaluations
+      `;
+      displayOrder = maxResult[0].next_order;
+    }
+
+    await sql`
+      INSERT INTO showcase_evaluations (evaluation_id, display_order)
+      VALUES (${evaluationId}, ${displayOrder})
+      ON CONFLICT (evaluation_id) DO UPDATE SET display_order = ${displayOrder}
+    `;
+  } catch (error) {
+    console.error("Error adding showcase evaluation:", error);
+    throw error;
+  }
+}
+
+/**
+ * Remove an evaluation from the showcase
+ */
+export async function removeShowcaseEvaluation(evaluationId: number): Promise<void> {
+  try {
+    await sql`
+      DELETE FROM showcase_evaluations WHERE evaluation_id = ${evaluationId}
+    `;
+  } catch (error) {
+    console.error("Error removing showcase evaluation:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all showcase evaluations with basic info for admin panel
+ */
+export async function getShowcaseEvaluationsForAdmin(): Promise<any[]> {
+  try {
+    const results = await sql`
+      SELECT
+        s.id,
+        s.evaluation_id,
+        s.display_order,
+        s.created_at,
+        e.url,
+        e.overall_score,
+        e.timestamp as evaluation_timestamp
+      FROM showcase_evaluations s
+      LEFT JOIN evaluations e ON s.evaluation_id = e.id
+      ORDER BY s.display_order ASC
+    `;
+    return results;
+  } catch (error) {
+    console.error("Error fetching showcase evaluations for admin:", error);
     throw error;
   }
 }
