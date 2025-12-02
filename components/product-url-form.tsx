@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Coins, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlowingShadow } from "@/components/ui/glowing-shadow";
 import { DemographicsForm } from "@/components/demographics-form";
 import { QuantumPulseLoader } from "@/components/ui/quantum-pulse-loader";
+import { PricingModal } from "@/components/credits/pricing-modal";
 import { type Demographics } from "@/types";
+import { useUser } from "@stackframe/stack";
 
 interface ProductUrlFormProps {
   onAnalyze: (url: string, demographics: Demographics) => void;
   isAnalyzing: boolean;
 }
+
+const CREDIT_COST = 1; // Base evaluation costs 1 credit
 
 export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) {
   const [url, setUrl] = useState("");
@@ -22,10 +26,46 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
     incomeTier: "",
     region: "",
   });
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const user = useUser();
+
+  // Fetch credit balance when user is logged in
+  useEffect(() => {
+    if (user) {
+      fetchCreditBalance();
+    }
+  }, [user]);
+
+  const fetchCreditBalance = async () => {
+    try {
+      const response = await fetch("/api/user/credits");
+      const data = await response.json();
+      if (data.success) {
+        setCreditBalance(data.balance);
+      }
+    } catch (error) {
+      console.error("Error fetching credit balance:", error);
+    }
+  };
+
+  const hasInsufficientCredits = user && creditBalance !== null && creditBalance < CREDIT_COST;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Check if user is logged in
+    if (!user) {
+      window.location.href = "/handler/sign-in?redirect=/";
+      return;
+    }
+
+    // Check if user has enough credits
+    if (hasInsufficientCredits) {
+      setShowPricingModal(true);
+      return;
+    }
 
     if (!url.trim()) {
       setError("Please enter a product URL");
@@ -131,9 +171,63 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
               <p className="text-red-500 text-sm mt-2">{error}</p>
             )}
 
+            {/* Credit Cost Info */}
+            {user && creditBalance !== null && (
+              <div className={cn(
+                "flex items-center justify-between p-3 rounded-xl border",
+                hasInsufficientCredits
+                  ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
+                  : "bg-neutral-50 dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800"
+              )}>
+                <div className="flex items-center gap-2">
+                  <Coins className={cn(
+                    "w-4 h-4",
+                    hasInsufficientCredits ? "text-red-500" : "text-amber-500"
+                  )} />
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Cost: <span className="font-semibold">{CREDIT_COST} credit</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Balance: <span className={cn(
+                      "font-semibold",
+                      hasInsufficientCredits ? "text-red-500" : "text-green-600 dark:text-green-400"
+                    )}>{creditBalance}</span>
+                  </span>
+                  {hasInsufficientCredits && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPricingModal(true)}
+                      className="text-xs px-2 py-1 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      Buy Credits
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Insufficient Credits Warning */}
+            {hasInsufficientCredits && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  You need at least {CREDIT_COST} credit to run an analysis.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowPricingModal(true)}
+                    className="font-semibold underline hover:no-underline"
+                  >
+                    Get more credits
+                  </button>
+                </p>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || hasInsufficientCredits}
               className={cn(
                 "w-full py-4 rounded-2xl font-semibold text-lg",
                 "bg-[#459A9A] text-black",
@@ -144,10 +238,17 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
             >
               {isAnalyzing ? (
                 <QuantumPulseLoader />
+              ) : !user ? (
+                <>Sign in to Analyze</>
+              ) : hasInsufficientCredits ? (
+                <>
+                  <Coins className="w-5 h-5" />
+                  Buy Credits to Analyze
+                </>
               ) : (
                 <>
                   <Search className="w-5 h-5" />
-                  Analyze
+                  Analyze ({CREDIT_COST} credit)
                 </>
               )}
             </button>
@@ -157,6 +258,16 @@ export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) 
           </form>
         </div>
       </GlowingShadow>
+
+      {/* Pricing Modal */}
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
+        onSuccess={() => {
+          setShowPricingModal(false);
+          fetchCreditBalance();
+        }}
+      />
     </section>
   );
 }

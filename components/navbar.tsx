@@ -1,6 +1,6 @@
 "use client";
 
-import { Moon, Sun, Brain, User, LogOut, Settings, UserCircle } from "lucide-react";
+import { Moon, Sun, Brain, User, LogOut, Settings, UserCircle, Coins } from "lucide-react";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { useEffect, useState, useRef } from "react";
@@ -8,6 +8,7 @@ import { Menu, MenuItem, HoveredLink } from "@/components/ui/navbar-menu";
 import { useUser } from "@stackframe/stack";
 import { useRouter } from "next/navigation";
 import { useOutsideClick } from "@/hooks/use-outside-click";
+import { CreditBalance } from "@/components/credits/credit-balance";
 
 export function Navbar() {
   const { theme, resolvedTheme, setTheme } = useTheme();
@@ -65,6 +66,16 @@ export function Navbar() {
         >
           Prompts
         </a>
+
+        <a
+          href="/pricing"
+          className="text-sm font-medium text-[#4A044E] hover:opacity-70 transition-opacity cursor-pointer"
+        >
+          Pricing
+        </a>
+
+        {/* Credit Balance (only show when logged in) */}
+        {user && <CreditBalance showLabel={false} />}
 
         {/* Auth Buttons / User Menu */}
         {user ? (
