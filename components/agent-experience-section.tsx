@@ -307,50 +307,52 @@ export function AgentExperienceSection({ agentExperience, evaluationId }: AgentE
               );
             })}
 
-            {/* AX Council Tab - Yellow/Orange */}
-            <button
-              onClick={() => {
-                if (councilResult) {
-                  setSelectedModel('council');
-                  setSelectedModelData(null);
-                } else if (allModelsComplete) {
-                  runCouncil();
-                }
-              }}
-              disabled={!allModelsComplete && !councilResult}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-all border-2",
-                selectedModel === 'council'
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500"
-                  : councilResult
-                    ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-500 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                    : allModelsComplete
-                      ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-                      : "bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 border-neutral-200 dark:border-neutral-700 cursor-not-allowed opacity-50"
+            {/* AX Council Tab - Always Yellow/Orange with tooltip when disabled */}
+            <div className="relative group">
+              <button
+                onClick={() => {
+                  if (councilResult) {
+                    setSelectedModel('council');
+                    setSelectedModelData(null);
+                  } else if (allModelsComplete) {
+                    runCouncil();
+                  }
+                }}
+                disabled={!allModelsComplete && !councilResult}
+                className={cn(
+                  "px-4 py-2 rounded-lg text-sm font-medium transition-all border-2",
+                  selectedModel === 'council'
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-500"
+                    : councilResult
+                      ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-500 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                      : allModelsComplete
+                        ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+                        : "bg-white dark:bg-neutral-900 text-amber-600/50 dark:text-amber-500/50 border-amber-300 dark:border-amber-700 cursor-not-allowed"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {runningCouncil ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : councilResult ? (
+                    <CheckCircle2 className="w-4 h-4 text-amber-500" />
+                  ) : (
+                    <Users className="w-4 h-4" />
+                  )}
+                  <span>AX Council</span>
+                  {councilResult && (
+                    <span className="ml-1 text-xs opacity-75">({councilResult.final_ax_score})</span>
+                  )}
+                </div>
+              </button>
+              {/* Tooltip - only show when disabled */}
+              {!allModelsComplete && !councilResult && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                  Run all model evaluations first to unlock AX Council
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800"></div>
+                </div>
               )}
-            >
-              <div className="flex items-center gap-2">
-                {runningCouncil ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : councilResult ? (
-                  <CheckCircle2 className="w-4 h-4 text-amber-500" />
-                ) : (
-                  <Users className="w-4 h-4" />
-                )}
-                <span>AX Council</span>
-                {councilResult && (
-                  <span className="ml-1 text-xs opacity-75">({councilResult.final_ax_score})</span>
-                )}
-              </div>
-            </button>
+            </div>
           </div>
-
-          {/* Council info message */}
-          {!allModelsComplete && !councilResult && models.length > 0 && (
-            <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">
-              Run all model evaluations to unlock the AX Council aggregate score.
-            </p>
-          )}
         </div>
       )}
 
