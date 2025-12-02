@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createCheckoutSession, CREDIT_PACKS, CreditPackId } from "@/lib/stripe";
-import { stackServerApp } from "@/stack";
+import { stackServerApp } from "@/stack/server";
 
 export async function POST(request: NextRequest) {
   try {

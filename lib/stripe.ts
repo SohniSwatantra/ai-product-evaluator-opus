@@ -4,10 +4,21 @@
 
 import Stripe from "stripe";
 
-// Initialize Stripe client
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2025-04-30.basil",
-});
+// Lazy-initialize Stripe client to avoid build-time errors
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    if (!secretKey) {
+      throw new Error("STRIPE_SECRET_KEY is not configured");
+    }
+    _stripe = new Stripe(secretKey, {
+      apiVersion: "2025-04-30.basil",
+    });
+  }
+  return _stripe;
+}
 
 // Credit pack configurations
 export const CREDIT_PACKS = {
@@ -60,7 +71,7 @@ export async function createCheckoutSession(
     throw new Error(`Invalid pack ID: ${packId}`);
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: [
       {
@@ -102,5 +113,5 @@ export function constructWebhookEvent(
     throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
   }
 
-  return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  return getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
 }
