@@ -192,84 +192,84 @@ export default function Home() {
             </section>
 
             {/* Scroll Animation Section */}
-            <section className="-mt-32 mb-32">
+            <section className="-mt-16 md:-mt-32 mb-16 md:mb-32">
               <ContainerScroll
                 titleComponent={
                   <>
-                    <h2 className="text-4xl font-semibold text-black dark:text-white">
+                    <h2 className="text-2xl md:text-4xl font-semibold text-black dark:text-white">
                       See It In Action
                       <br />
-                      <span className="text-4xl md:text-6xl font-bold mt-1 leading-none">
+                      <span className="text-2xl md:text-4xl lg:text-6xl font-bold mt-1 leading-none">
                         Real-Time Product Analysis
                       </span>
                     </h2>
                   </>
                 }
               >
-                <div className="w-full h-full bg-[#111111] rounded-2xl p-8 border border-white/10">
-                  <div className="space-y-8">
+                <div className="w-full h-full bg-[#111111] rounded-xl md:rounded-2xl p-3 md:p-8 border border-white/10 overflow-y-auto">
+                  <div className="space-y-4 md:space-y-8">
                     {/* Example Product Header */}
                     <div className="text-center">
-                      <h3 className="text-2xl font-bold text-white mb-2">
+                      <h3 className="text-lg md:text-2xl font-bold text-white mb-1 md:mb-2">
                         Sample Analysis Result
                       </h3>
-                      <p className="text-sm text-neutral-400 font-mono mb-4">
+                      <p className="text-xs md:text-sm text-neutral-400 font-mono mb-2 md:mb-4">
                         example.com/premium-wireless-headphones
                       </p>
-                      <div className="flex items-center justify-center gap-3 text-xs font-bold uppercase tracking-wider">
-                        <span className="px-4 py-1.5 rounded-full bg-[#1E293B] text-[#60A5FA] border border-[#334155]">
+                      <div className="flex items-center justify-center flex-wrap gap-2 md:gap-3 text-xs font-bold uppercase tracking-wider">
+                        <span className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-[#1E293B] text-[#60A5FA] border border-[#334155] text-[10px] md:text-xs">
                           Target: Female, 25-34, Medium Income
                         </span>
-                        <span className="px-4 py-1.5 rounded-full bg-[#14532D] text-[#4ADE80] border border-[#166534] flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
+                        <span className="px-2 md:px-4 py-1 md:py-1.5 rounded-full bg-[#14532D] text-[#4ADE80] border border-[#166534] flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
+                          <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#4ADE80] animate-pulse"></span>
                           HIGH INTENT
                         </span>
                       </div>
                     </div>
 
                     {/* Score Cards */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 gap-2 md:gap-4">
                       {/* Overall Score */}
-                      <div className="p-5 rounded-xl bg-black border border-white/10">
-                        <h4 className="text-xs font-medium text-neutral-400 mb-2">Overall Score</h4>
-                        <div className="text-4xl font-bold text-[#4ADE80] mb-3">
-                          78<span className="text-lg text-neutral-500 font-normal">/100</span>
+                      <div className="p-2 md:p-5 rounded-lg md:rounded-xl bg-black border border-white/10">
+                        <h4 className="text-[10px] md:text-xs font-medium text-neutral-400 mb-1 md:mb-2">Overall Score</h4>
+                        <div className="text-xl md:text-4xl font-bold text-[#4ADE80] mb-1 md:mb-3">
+                          78<span className="text-xs md:text-lg text-neutral-500 font-normal">/100</span>
                         </div>
-                        <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+                        <div className="w-full h-1 md:h-1.5 bg-neutral-800 rounded-full overflow-hidden">
                           <div className="h-full bg-[#4ADE80]" style={{ width: '78%' }} />
                         </div>
                       </div>
 
                       {/* Human Buying Intent */}
-                      <div className="p-5 rounded-xl bg-[#1F1028] border border-[#581C87]">
-                        <h4 className="text-xs font-medium text-[#E9D5FF] mb-2">Human Buying Intent</h4>
-                        <div className="text-4xl font-bold text-[#C084FC] mb-3">
-                          72<span className="text-lg text-[#7E22CE] font-normal">%</span>
+                      <div className="p-2 md:p-5 rounded-lg md:rounded-xl bg-[#1F1028] border border-[#581C87]">
+                        <h4 className="text-[10px] md:text-xs font-medium text-[#E9D5FF] mb-1 md:mb-2">Human Buying Intent</h4>
+                        <div className="text-xl md:text-4xl font-bold text-[#C084FC] mb-1 md:mb-3">
+                          72<span className="text-xs md:text-lg text-[#7E22CE] font-normal">%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#3B0764] rounded-full overflow-hidden">
+                        <div className="w-full h-1 md:h-1.5 bg-[#3B0764] rounded-full overflow-hidden">
                           <div className="h-full bg-[#C084FC]" style={{ width: '72%' }} />
                         </div>
                       </div>
 
                       {/* Agent Experience */}
-                      <div className="p-5 rounded-xl bg-[#0F172A] border border-[#1E40AF]">
-                        <h4 className="text-xs font-medium text-[#BFDBFE] mb-2">Agent Experience</h4>
-                        <div className="text-4xl font-bold text-[#FACC15] mb-3">
-                          65<span className="text-lg text-[#1D4ED8] font-normal">%</span>
+                      <div className="p-2 md:p-5 rounded-lg md:rounded-xl bg-[#0F172A] border border-[#1E40AF]">
+                        <h4 className="text-[10px] md:text-xs font-medium text-[#BFDBFE] mb-1 md:mb-2">Agent Experience</h4>
+                        <div className="text-xl md:text-4xl font-bold text-[#FACC15] mb-1 md:mb-3">
+                          65<span className="text-xs md:text-lg text-[#1D4ED8] font-normal">%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-[#172554] rounded-full overflow-hidden">
+                        <div className="w-full h-1 md:h-1.5 bg-[#172554] rounded-full overflow-hidden">
                           <div className="h-full bg-[#FACC15]" style={{ width: '65%' }} />
                         </div>
                       </div>
                     </div>
 
-                    {/* SSR Distribution */}
-                    <div className="p-6 rounded-xl bg-[#1A1A1A] border border-white/5">
+                    {/* SSR Distribution - Hidden on mobile for space */}
+                    <div className="hidden md:block p-6 rounded-xl bg-[#1A1A1A] border border-white/5">
                       <div className="flex justify-between items-center mb-4">
                         <h4 className="text-sm font-semibold text-white">SSR Distribution</h4>
                         <span className="text-xs text-neutral-500">Confidence: 92%</span>
                       </div>
-                      
+
                       <div className="grid grid-cols-3 gap-4">
                         <div className="p-3 rounded-lg bg-[#0F0F0F] text-center border border-white/5">
                           <div className="text-xl font-bold text-[#4ADE80] mb-0.5">45%</div>
@@ -286,8 +286,8 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Evaluation Factors Header */}
-                    <div>
+                    {/* Evaluation Factors Header - Hidden on mobile for space */}
+                    <div className="hidden md:block">
                       <h4 className="text-lg font-semibold text-white mb-4">Evaluation Factors</h4>
                       <div className="w-full h-12 bg-[#1A1A1A] rounded-lg border border-white/5 animate-pulse"></div>
                     </div>
