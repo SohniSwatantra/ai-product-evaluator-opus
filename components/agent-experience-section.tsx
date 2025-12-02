@@ -341,7 +341,8 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
                       : allModelsComplete && !isShowcase
                         ? "bg-white dark:bg-neutral-900 text-amber-700 dark:text-amber-400 border-amber-400 dark:border-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                         : "bg-white dark:bg-neutral-900 text-amber-600/50 dark:text-amber-500/50 border-amber-300 dark:border-amber-700 cursor-not-allowed",
-                  isShowcase && !councilResult && "opacity-50 cursor-not-allowed"
+                  isShowcase && !councilResult && "opacity-50 cursor-not-allowed",
+                  (!allModelsComplete && !councilResult) && !isShowcase && "bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-400 dark:border-amber-600 opacity-100"
                 )}
               >
                 <div className="flex items-center gap-2">
