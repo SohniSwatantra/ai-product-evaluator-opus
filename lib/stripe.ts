@@ -25,31 +25,31 @@ export const CREDIT_PACKS = {
   starter: {
     id: "starter",
     name: "Starter Pack",
-    credits: 5,
-    price: 500, // in cents ($5.00)
-    priceDisplay: "$5",
-    description: "5 Credits - Perfect for trying out",
+    credits: 30,
+    price: 2900, // in cents ($29.00)
+    priceDisplay: "$29",
+    description: "30 Credits - Perfect for trying out",
     popular: false,
   },
   pro: {
     id: "pro",
     name: "Pro Pack",
-    credits: 20,
-    price: 1500, // in cents ($15.00)
-    priceDisplay: "$15",
-    description: "20 Credits - Best value for regular users",
+    credits: 60,
+    price: 4900, // in cents ($49.00)
+    priceDisplay: "$49",
+    description: "60 Credits - Best value for regular users",
     popular: true,
-    savings: "Save 25%",
+    savings: "Save 18%",
   },
   agency: {
     id: "agency",
     name: "Agency Pack",
-    credits: 100,
-    price: 5000, // in cents ($50.00)
-    priceDisplay: "$50",
-    description: "100 Credits - For teams and heavy users",
+    credits: 200,
+    price: 12900, // in cents ($129.00)
+    priceDisplay: "$129",
+    description: "200 Credits - For teams and heavy users",
     popular: false,
-    savings: "Save 50%",
+    savings: "Save 33%",
   },
 } as const;
 

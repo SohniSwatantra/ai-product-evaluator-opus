@@ -894,6 +894,9 @@ export async function initCreditTables() {
   }
 }
 
+// Free credits for new users
+const FREE_CREDITS_FOR_NEW_USERS = 10;
+
 /**
  * Get user's credit balance
  */
@@ -904,13 +907,22 @@ export async function getUserCredits(userId: string): Promise<number> {
     `;
 
     if (results.length === 0) {
-      // Create new user with 0 balance
+      // Create new user with 10 free credits
       await sql`
         INSERT INTO user_credits (user_id, balance)
-        VALUES (${userId}, 0)
+        VALUES (${userId}, ${FREE_CREDITS_FOR_NEW_USERS})
         ON CONFLICT (user_id) DO NOTHING
       `;
-      return 0;
+
+      // Log the free credits transaction
+      await sql`
+        INSERT INTO credit_transactions (user_id, amount, type, description, balance_after)
+        VALUES (${userId}, ${FREE_CREDITS_FOR_NEW_USERS}, 'bonus', 'Welcome bonus - 10 free credits', ${FREE_CREDITS_FOR_NEW_USERS})
+        ON CONFLICT DO NOTHING
+      `;
+
+      console.log(`New user ${userId} received ${FREE_CREDITS_FOR_NEW_USERS} free credits`);
+      return FREE_CREDITS_FOR_NEW_USERS;
     }
 
     return results[0].balance;
