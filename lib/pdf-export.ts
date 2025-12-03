@@ -81,6 +81,13 @@ export async function exportToPDF(
             clonedDoc.documentElement.classList.add('dark');
           }
 
+          // Hide elements marked for PDF exclusion (e.g., website screenshots)
+          clonedDoc.querySelectorAll('[data-pdf-exclude="true"]').forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.style.display = 'none';
+            }
+          });
+
           // Fix color rendering for canvas
           clonedDoc.querySelectorAll("*").forEach((el) => {
             if (el instanceof HTMLElement) {
@@ -171,6 +178,14 @@ export async function generatePDFBlob(
           if (isDarkMode) {
             clonedDoc.documentElement.classList.add('dark');
           }
+
+          // Hide elements marked for PDF exclusion (e.g., website screenshots)
+          clonedDoc.querySelectorAll('[data-pdf-exclude="true"]').forEach((el) => {
+            if (el instanceof HTMLElement) {
+              el.style.display = 'none';
+            }
+          });
+
           clonedDoc.querySelectorAll("*").forEach((el) => {
             if (el instanceof HTMLElement) {
               try {
