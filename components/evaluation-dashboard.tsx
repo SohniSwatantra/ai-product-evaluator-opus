@@ -78,7 +78,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Product Screenshot & Name - Compact Top Section */}
       {normalizedEvaluation.websiteSnapshot && (
-        <div className="p-6 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+        <div data-pdf-exclude="true" className="p-6 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
           <div className="flex flex-col gap-4">
             {/* Hero Screenshot - Header and Hero Section Only (or full screenshot for old evaluations) */}
             <div className="w-full">
@@ -432,7 +432,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
 
       {/* Live Website Details - Bottom Section */}
       {normalizedEvaluation.websiteSnapshot && (
-        <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+        <div data-pdf-exclude="true" className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-6">
             <Package className="w-6 h-6 text-black dark:text-white" />
             <h3 className="text-2xl font-semibold text-black dark:text-white">Live Website Snapshot</h3>
