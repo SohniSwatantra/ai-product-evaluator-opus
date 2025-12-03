@@ -240,7 +240,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
               Multi-Model Evaluation
             </h4>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-neutral-400 italic hidden sm:inline">Refresh if taking longer</span>
+              <span className="text-xs text-neutral-400 italic">Refresh if taking longer</span>
               <button
                 onClick={fetchStatus}
                 className="p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
@@ -366,9 +366,10 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
               </button>
               {/* Tooltip - show when disabled */}
               {((!allModelsComplete && !councilResult) || (isShowcase && !councilResult)) && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-lg">
+                <div className="absolute left-1/2 -translate-x-1/2 px-3 py-2 bg-neutral-900 dark:bg-neutral-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg top-full mt-2 text-center max-w-[220px] md:bottom-full md:top-auto md:mb-2 md:mt-0 md:whitespace-nowrap md:max-w-none">
                   {isShowcase ? "Model evaluations are disabled for showcase" : "Run all model evaluations first to unlock AX Council"}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-neutral-900 dark:border-t-neutral-800"></div>
+                  {/* Arrow - points up on mobile (tooltip below), points down on desktop (tooltip above) */}
+                  <div className="absolute left-1/2 -translate-x-1/2 border-4 border-transparent bottom-full border-b-neutral-900 dark:border-b-neutral-800 md:bottom-auto md:top-full md:border-b-transparent md:border-t-neutral-900 md:dark:border-t-neutral-800"></div>
                 </div>
               )}
             </div>
