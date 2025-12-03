@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { StackProvider, StackTheme } from "@stackframe/stack";
 import { stackClientApp } from "../stack/client";
 import { Geist, Geist_Mono } from "next/font/google";
@@ -29,7 +30,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      ><StackProvider app={stackClientApp}><StackTheme>
+      >
+        <Script
+          src="https://cloud.umami.is/script.js"
+          data-website-id="a39c6a50-34ac-49ac-958c-37a8029215d9"
+        />
+        <StackProvider app={stackClientApp}><StackTheme>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
