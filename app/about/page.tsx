@@ -341,22 +341,24 @@ export default function AboutPage() {
             </div>
           </div>
 
-          {/* CTA Section */}
-          <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-center">
-            <h2 className="text-2xl font-bold text-black dark:text-white mb-4">Learn More About Agent Experience</h2>
-            <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-6">
-              AX is a substantial, industry-level opportunity that requires an open, collaborative approach to achieve. Netlify has helped define AX and bring together industry collaborators to pave a path forward.
-            </p>
-            <a
-              href="https://agentexperience.ax/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#4A044E] text-white font-semibold hover:bg-[#3A0340] transition-colors"
-            >
-              <span>Visit agentexperience.ax</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
+          {/* CTA Section - Only show when Agent Experience tab is active */}
+          {activeTab === "ax" && (
+            <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm text-center">
+              <h2 className="text-2xl font-bold text-black dark:text-white mb-4">Learn More About Agent Experience</h2>
+              <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed mb-6">
+                AX is a substantial, industry-level opportunity that requires an open, collaborative approach to achieve. Netlify has helped define AX and bring together industry collaborators to pave a path forward.
+              </p>
+              <a
+                href="https://agentexperience.ax/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#4A044E] text-white font-semibold hover:bg-[#3A0340] transition-colors"
+              >
+                <span>Visit agentexperience.ax</span>
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          )}
 
           {/* Back to Home */}
           <div className="text-center">
