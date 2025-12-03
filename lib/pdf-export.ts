@@ -74,19 +74,19 @@ export async function exportToPDF(
       backgroundColor: backgroundColor,
       windowWidth: 1400,
       windowHeight: element.scrollHeight,
+      ignoreElements: (el: Element) => {
+        // Exclude elements marked with data-pdf-exclude (website screenshots)
+        if (el instanceof HTMLElement && el.getAttribute('data-pdf-exclude') === 'true') {
+          return true;
+        }
+        return false;
+      },
       onclone: (clonedDoc: Document) => {
         try {
           // Ensure dark mode class is preserved in cloned document
           if (isDarkMode) {
             clonedDoc.documentElement.classList.add('dark');
           }
-
-          // Hide elements marked for PDF exclusion (e.g., website screenshots)
-          clonedDoc.querySelectorAll('[data-pdf-exclude="true"]').forEach((el) => {
-            if (el instanceof HTMLElement) {
-              el.style.display = 'none';
-            }
-          });
 
           // Fix color rendering for canvas
           clonedDoc.querySelectorAll("*").forEach((el) => {
@@ -95,7 +95,6 @@ export async function exportToPDF(
                 normalizeElementColors(el, clonedDoc);
               } catch (error) {
                 // Silently skip elements that fail to normalize
-                console.warn('Failed to normalize element colors:', error);
               }
             }
           });
@@ -173,18 +172,18 @@ export async function generatePDFBlob(
       backgroundColor: backgroundColor,
       windowWidth: 1400,
       windowHeight: element.scrollHeight,
+      ignoreElements: (el: Element) => {
+        // Exclude elements marked with data-pdf-exclude (website screenshots)
+        if (el instanceof HTMLElement && el.getAttribute('data-pdf-exclude') === 'true') {
+          return true;
+        }
+        return false;
+      },
       onclone: (clonedDoc: Document) => {
         try {
           if (isDarkMode) {
             clonedDoc.documentElement.classList.add('dark');
           }
-
-          // Hide elements marked for PDF exclusion (e.g., website screenshots)
-          clonedDoc.querySelectorAll('[data-pdf-exclude="true"]').forEach((el) => {
-            if (el instanceof HTMLElement) {
-              el.style.display = 'none';
-            }
-          });
 
           clonedDoc.querySelectorAll("*").forEach((el) => {
             if (el instanceof HTMLElement) {
@@ -192,7 +191,6 @@ export async function generatePDFBlob(
                 normalizeElementColors(el, clonedDoc);
               } catch (error) {
                 // Silently skip elements that fail to normalize
-                console.warn('Failed to normalize element colors:', error);
               }
             }
           });
