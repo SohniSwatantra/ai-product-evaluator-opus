@@ -241,7 +241,8 @@ export default function PricingPage() {
             </div>
           )}
 
-          {/* Voucher Code Redemption */}
+          {/* Voucher Code Redemption - Only for signed-in users */}
+          {user && (
           <div className="mb-8 p-6 rounded-2xl border border-cyan-500/30 bg-cyan-500/10">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
@@ -286,6 +287,7 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Error Message */}
           {error && (
