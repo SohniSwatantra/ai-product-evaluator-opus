@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEvaluationById, getAXModelEvaluation, upsertAXModelEvaluation, getEnabledAXModelConfigs } from "@/lib/db";
+import { getEvaluationById, getAXModelEvaluation, upsertAXModelEvaluation, getEnabledAXModelConfigs, deductUserCredits } from "@/lib/db";
 import { callOpenRouter, createAXEvaluationPrompt, parseAXResponse } from "@/lib/openrouter";
+import { stackServerApp } from "@/stack/server";
 
 /**
  * POST /api/ax-evaluate/[evaluationId]/[modelId]
@@ -11,6 +12,10 @@ export async function POST(
   { params }: { params: Promise<{ evaluationId: string; modelId: string }> }
 ) {
   try {
+    // Get current user for credit deduction
+    const user = await stackServerApp.getUser();
+    const userId = user?.id || null;
+
     const { evaluationId: evalIdStr, modelId } = await params;
     const evaluationId = parseInt(evalIdStr, 10);
 
@@ -96,6 +101,17 @@ export async function POST(
         status: 'completed',
         completed_at: new Date().toISOString()
       });
+
+      // Deduct credit for signed-in users on successful completion
+      if (userId) {
+        try {
+          await deductUserCredits(userId, 1, `AX evaluation: ${modelConfig.display_name}`);
+          console.log(`💳 Deducted 1 credit from user ${userId} for ${modelConfig.display_name}`);
+        } catch (creditError) {
+          console.error("Failed to deduct credit:", creditError);
+          // Don't fail the evaluation if credit deduction fails
+        }
+      }
 
       return NextResponse.json({
         success: true,
