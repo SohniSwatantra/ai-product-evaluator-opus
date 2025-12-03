@@ -20,7 +20,7 @@ import { readFile, unlink } from "fs/promises";
 import { calculateSSR, compareMethodologies, getAnchorFromSSRScore } from "../lib/ssr-calculator";
 import { createAXEvaluationPrompt, parseAgentExperience } from "../lib/ax-evaluator";
 import { scrapeWebsite, extractProductInfo } from "../lib/web-scraper";
-import { saveEvaluation } from "../lib/db";
+import { saveEvaluation, deductUserCredits } from "../lib/db";
 import type { Demographics, ProductEvaluation, SectionRecommendation } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -423,6 +423,17 @@ ${scrapedDataAppendix}
     const savedId = await saveEvaluation(evaluation, userId);
     evaluation.id = savedId;  // Add ID to evaluation for multi-model AX feature
     console.log(`💾 Evaluation stored in evaluations table with ID: ${savedId}`);
+
+    // Deduct credit for signed-in users on successful completion
+    if (userId) {
+      try {
+        await deductUserCredits(userId, 1, `Main evaluation for ${validatedUrl}`);
+        console.log(`💳 Deducted 1 credit from user ${userId}`);
+      } catch (creditError) {
+        console.error("Failed to deduct credit:", creditError);
+        // Don't fail the evaluation if credit deduction fails
+      }
+    }
   } catch (error) {
     console.error("Failed to save evaluation to evaluations table:", error);
   }

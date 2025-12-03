@@ -354,6 +354,7 @@ ${scrapedDataAppendix}
         evaluation.websiteSnapshot = {
             screenshotPath: scrapedData.screenshotPath,
             heroScreenshotPath: scrapedData.heroScreenshotPath,
+            heroScreenshotBase64: scrapedData.heroScreenshotBase64, // Save base64 for reliable frontend rendering
             sectionScreenshots: scrapedData.sectionScreenshots,
             productName: productInfo.productName,
             price: productInfo.price,
@@ -376,8 +377,20 @@ ${scrapedDataAppendix}
     await pushScreenshotsToR2(evaluation, scrapedData);
     // Save evaluation to permanent table (used for history dashboards)
     try {
-        await (0, db_1.saveEvaluation)(evaluation, userId);
-        console.log("💾 Evaluation stored in evaluations table");
+        const savedId = await (0, db_1.saveEvaluation)(evaluation, userId);
+        evaluation.id = savedId; // Add ID to evaluation for multi-model AX feature
+        console.log(`💾 Evaluation stored in evaluations table with ID: ${savedId}`);
+        // Deduct credit for signed-in users on successful completion
+        if (userId) {
+            try {
+                await (0, db_1.deductUserCredits)(userId, 1, `Main evaluation for ${validatedUrl}`);
+                console.log(`💳 Deducted 1 credit from user ${userId}`);
+            }
+            catch (creditError) {
+                console.error("Failed to deduct credit:", creditError);
+                // Don't fail the evaluation if credit deduction fails
+            }
+        }
     }
     catch (error) {
         console.error("Failed to save evaluation to evaluations table:", error);
