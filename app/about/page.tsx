@@ -1,9 +1,15 @@
+"use client";
+
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { ExternalLink, Users, Code, Bot, ArrowRight } from "lucide-react";
+import { ExternalLink, Users, Code, Bot, ArrowRight, Brain, Gauge, FileCode } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AboutPage() {
+  const [activeTab, setActiveTab] = useState<"factor" | "ssr" | "ax">("factor");
+
   return (
     <BackgroundGlow>
       <Navbar />
@@ -31,6 +37,231 @@ export default function AboutPage() {
             <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
               Just as User Experience (UX) focuses on human interactions with a product and Developer Experience (DX) optimizes the experience of building on a platform, AX is about ensuring that AI agents can seamlessly interact with and extend digital products. This includes providing well-structured APIs, machine-readable documentation, and clear operational contexts for AI systems.
             </p>
+          </div>
+
+          {/* Methodology Section */}
+          <div className="p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
+            <h2 className="text-2xl font-bold text-black dark:text-white mb-6">Our Analysis Methodology</h2>
+            
+            {/* Tabs Navigation */}
+            <div className="flex flex-wrap gap-2 mb-8 p-1 bg-neutral-100 dark:bg-neutral-900 rounded-lg">
+              <button
+                onClick={() => setActiveTab("factor")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                  activeTab === "factor"
+                    ? "bg-white dark:bg-neutral-800 text-black dark:text-white shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                }`}
+              >
+                Factor-Based
+              </button>
+              <button
+                onClick={() => setActiveTab("ssr")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                  activeTab === "ssr"
+                    ? "bg-white dark:bg-neutral-800 text-black dark:text-white shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                }`}
+              >
+                SSR Analysis
+              </button>
+              <button
+                onClick={() => setActiveTab("ax")}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
+                  activeTab === "ax"
+                    ? "bg-white dark:bg-neutral-800 text-black dark:text-white shadow-sm"
+                    : "text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300"
+                }`}
+              >
+                Agent Experience
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div className="min-h-[400px]">
+              <AnimatePresence mode="wait">
+                {activeTab === "factor" && (
+                  <motion.div
+                    key="factor"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                        <Gauge className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-black dark:text-white">Factor-Based Evaluation</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Standardized Technical Assessment</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      Our factor-based methodology uses a traditional analytical framework where an AI model evaluates your product page against specific, industry-standard criteria. We use automated tools to extract text, metadata, and visual elements from your site to perform this analysis.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                      <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50">
+                        <h4 className="font-semibold text-black dark:text-white mb-2">Technical Foundations</h4>
+                        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>Structured Data:</strong> Checks for Schema.org markup and JSON-LD</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>Semantic HTML:</strong> Evaluates header hierarchy and semantic tags</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>Meta Tags:</strong> Analyzes clarity of titles and descriptions</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div className="p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/50">
+                        <h4 className="font-semibold text-black dark:text-white mb-2">Content & Accessibility</h4>
+                        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>Content Clarity:</strong> Measures value proposition understanding</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>API Availability:</strong> Checks for programmatic access</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="text-blue-500 mt-1">•</span>
+                            <span><strong>Bot Accessibility:</strong> Reviews robots.txt and sitemaps</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === "ssr" && (
+                  <motion.div
+                    key="ssr"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                        <Brain className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-black dark:text-white">SSR Methodology</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Semantic Similarity Ratio</p>
+                      </div>
+                    </div>
+
+                    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      This is a novel, scientific approach designed to predict human purchase intent by measuring the "semantic distance" between a generated response and standardized reference points.
+                    </p>
+
+                    <div className="space-y-4 mt-6">
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center font-bold text-purple-600">1</div>
+                        <div>
+                          <h4 className="font-semibold text-black dark:text-white">Response Generation</h4>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            An AI persona simulates a user and generates a natural language response regarding their intent to purchase the product.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center font-bold text-purple-600">2</div>
+                        <div>
+                          <h4 className="font-semibold text-black dark:text-white">Vector Analysis</h4>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            The response is converted into high-dimensional vector embeddings to capture deep semantic meaning beyond simple keyword matching.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/50 flex items-center justify-center font-bold text-purple-600">3</div>
+                        <div>
+                          <h4 className="font-semibold text-black dark:text-white">Anchor Comparison</h4>
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                            We calculate the cosine similarity between the response and 15 standardized "anchor" statements ranging from "Strongly Disagree" to "Strongly Agree" to map the sentiment onto a quantitative scale.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {activeTab === "ax" && (
+                  <motion.div
+                    key="ax"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                        <Bot className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-black dark:text-white">Agent Experience (AX)</h3>
+                        <p className="text-sm text-neutral-500 dark:text-neutral-400">Machine Readability & ANPS</p>
+                      </div>
+                    </div>
+
+                    <p className="text-neutral-700 dark:text-neutral-300 leading-relaxed">
+                      We treat AI agents (like ChatGPT, Claude, or Perplexity) as a primary user demographic. Our goal is to measure how easily an autonomous agent can access, read, and understand your website to perform tasks on behalf of a human.
+                    </p>
+
+                    <div className="mt-6 space-y-4">
+                      <h4 className="font-semibold text-black dark:text-white">Agent Net Promoter Score (ANPS) Categories:</h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="p-4 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                          <div className="font-bold text-green-700 dark:text-green-400 mb-1">Promoter</div>
+                          <div className="text-xs font-mono text-green-600/70 mb-2">Score 75-100</div>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                            Highly optimized for agents. Clear APIs, perfect structured data. Agents can easily recommend and use this product.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                          <div className="font-bold text-yellow-700 dark:text-yellow-400 mb-1">Passive</div>
+                          <div className="text-xs font-mono text-yellow-600/70 mb-2">Score 50-74</div>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                            Readable but not optimized. Agents can access basic information but may struggle with complex interactions.
+                          </p>
+                        </div>
+
+                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                          <div className="font-bold text-red-700 dark:text-red-400 mb-1">Detractor</div>
+                          <div className="text-xs font-mono text-red-600/70 mb-2">Score 0-49</div>
+                          <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                            Difficult or impossible for agents to parse. Unstructured data or technical blocks prevent agent access.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 p-4 rounded-xl bg-neutral-100 dark:bg-neutral-800/50">
+                      <h4 className="font-semibold text-black dark:text-white mb-2">Why This Matters</h4>
+                      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                        When an AI user searches for "products that do X," your AX score determines whether your product is accurately represented and recommended. High AX ensures your product is "visible" to the AI economy.
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           {/* Origin Section */}
