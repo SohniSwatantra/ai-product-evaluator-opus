@@ -223,6 +223,7 @@ export default function Home() {
                   setIsShowcaseView(true); // Viewing from history = showcase
                 }}
                 limit={10}
+                isSignedIn={!!user}
               />
             </section>
 

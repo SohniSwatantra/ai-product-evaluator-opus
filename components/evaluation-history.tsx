@@ -9,9 +9,10 @@ import { AnchorBadge } from "@/components/ui/anchor-indicator";
 interface EvaluationHistoryProps {
   onSelectEvaluation?: (evaluation: ProductEvaluation) => void;
   limit?: number;
+  isSignedIn?: boolean;
 }
 
-export function EvaluationHistory({ onSelectEvaluation, limit = 10 }: EvaluationHistoryProps) {
+export function EvaluationHistory({ onSelectEvaluation, limit = 10, isSignedIn = false }: EvaluationHistoryProps) {
   const [evaluations, setEvaluations] = useState<ProductEvaluation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export function EvaluationHistory({ onSelectEvaluation, limit = 10 }: Evaluation
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xl font-semibold text-black dark:text-white">
-          Recent Evaluations ({evaluations.length})
+          {isSignedIn ? `Recent Evaluations (${evaluations.length})` : "Example Evaluations"}
         </h3>
         <button
           onClick={fetchEvaluations}
