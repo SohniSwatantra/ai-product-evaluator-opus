@@ -15,10 +15,12 @@ const CREDIT_PACKS = [
     name: "Solo",
     credits: 500,
     price: "€1,499",
+    originalPrice: "€1,799",
     description: "Perfect for trying out",
     icon: Sparkles,
     popular: false,
     color: "blue",
+    earlyAccess: true,
     features: [
       "30 model evaluation runs",
       "Full AI-powered reports",
@@ -31,10 +33,12 @@ const CREDIT_PACKS = [
     name: "Business Pro",
     credits: 1000,
     price: "€1,999",
+    originalPrice: "€2,499",
     description: "Best value for regular business",
     icon: Zap,
     popular: true,
     color: "purple",
+    earlyAccess: true,
     features: [
       "60 model evaluation runs",
       "Full AI-powered reports",
@@ -48,10 +52,12 @@ const CREDIT_PACKS = [
     name: "Large Business",
     credits: 2000,
     price: "€2,999",
+    originalPrice: "€3,999",
     description: "For Large Business Teams",
     icon: Building2,
     popular: false,
     color: "amber",
+    earlyAccess: true,
     features: [
       "200 model evaluation runs",
       "Full AI-powered reports",
@@ -473,15 +479,25 @@ export default function PricingPage() {
                         </p>
                       </>
                     ) : (
-                      <div className="flex items-baseline gap-1">
+                      <div className="flex items-baseline gap-2">
                         <span className="text-5xl font-bold text-white">
                           {pack.price}
                         </span>
+                        {pack.originalPrice && (
+                          <span className="text-xl text-neutral-500 line-through">
+                            {pack.originalPrice}
+                          </span>
+                        )}
                       </div>
                     )}
                     <p className="text-neutral-400 mt-1">
                       {pack.credits} credits
                     </p>
+                    {pack.earlyAccess && (
+                      <p className="text-xs text-green-400 mt-1 font-medium">
+                        Early Access Deal (Limited to 10)
+                      </p>
+                    )}
                   </div>
 
                   <ul className="space-y-3 mb-8">
