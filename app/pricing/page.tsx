@@ -211,9 +211,9 @@ export default function PricingPage() {
           <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center gap-3">
             <Gift className="w-6 h-6 text-green-400" />
             <p className="text-lg font-semibold text-green-300">
-              10 Free Credits to Start
+              100 Free Credits to Start
               <span className="text-green-400/80 font-normal ml-2">
-                — Good enough for 2 full evaluations with multi-models!
+                — Good enough for 10 full evaluations!
               </span>
             </p>
           </div>
