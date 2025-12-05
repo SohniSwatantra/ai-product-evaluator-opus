@@ -1,4 +1,42 @@
-<!-- c567eb2d-2f00-4ad0-ab1f-9b891939b79e 5168fac0-01d1-4646-9597-ec7f7718e165 -->
+---
+name: Implement AX Council Visualization
+overview: ""
+todos:
+  - id: b10f12a7-c6c6-4ef6-b4ea-98a6e1897991
+    content: Install stripe package
+    status: pending
+  - id: 589f8b9b-9e40-47d6-a822-eeae6025df6f
+    content: Update lib/db.ts with schema and helper functions
+    status: pending
+  - id: ce21526b-1936-4b13-a31d-06e5195da665
+    content: Create lib/stripe.ts and checkout/webhook API routes
+    status: pending
+  - id: 64d47349-e613-4624-88dc-fe80fd0a2fe5
+    content: Create user credits API route
+    status: pending
+  - id: e321a621-da20-480e-ba07-4cb1d586253a
+    content: Create PricingModal and CreditBalance components
+    status: pending
+  - id: 32b545a1-5c6b-4771-98b1-d1f75820f062
+    content: Update Navbar to show credits/buy button
+    status: pending
+  - id: 2f826f61-d61a-4bcf-ade3-88e189e67416
+    content: Update ProductUrlForm to calculate cost and gate analysis
+    status: pending
+  - id: 8ea1d175-6df1-4110-80a3-29994cd959a6
+    content: Update evaluate API to deduct credits and handle multi-model logic
+    status: pending
+  - id: fc3a579c-522d-4ecd-a77e-7194bc9fb813
+    content: Update types/index.ts with AXCouncilResult
+    status: pending
+  - id: 7dba159b-5c8f-42a7-94a8-e607c3374fd4
+    content: Create components/ax-council.tsx
+    status: pending
+  - id: 858d2c30-90fe-4113-b695-71b4b76959fb
+    content: Update components/evaluation-dashboard.tsx to include AX Council
+    status: pending
+---
+
 # Implement AX Council Visualization
 
 I will implement the "AX Council" visualization feature. This involves creating a visual representation of the AI Advisory Board with 5 model members and 1 leader (AX Council).
@@ -44,17 +82,3 @@ I will implement the "AX Council" visualization feature. This involves creating 
 -   Check the positioning of score badges (above heads).
 -   Verify the orange color for the AX Council leader.
 -   Verify the correct text labels.
-
-### To-dos
-
-- [ ] Install stripe package
-- [ ] Update lib/db.ts with schema and helper functions
-- [ ] Create lib/stripe.ts and checkout/webhook API routes
-- [ ] Create user credits API route
-- [ ] Create PricingModal and CreditBalance components
-- [ ] Update Navbar to show credits/buy button
-- [ ] Update ProductUrlForm to calculate cost and gate analysis
-- [ ] Update evaluate API to deduct credits and handle multi-model logic
-- [ ] Update types/index.ts with AXCouncilResult
-- [ ] Create components/ax-council.tsx
-- [ ] Update components/evaluation-dashboard.tsx to include AX Council
