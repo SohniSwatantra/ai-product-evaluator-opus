@@ -24,32 +24,30 @@ function getStripe(): Stripe {
 export const CREDIT_PACKS = {
   starter: {
     id: "starter",
-    name: "Starter Pack",
-    credits: 30,
-    price: 2900, // in cents ($29.00)
-    priceDisplay: "$29",
-    description: "30 Credits - Perfect for trying out",
+    name: "Solo",
+    credits: 500,
+    price: 149900, // in cents ($1,499.00)
+    priceDisplay: "$1,499",
+    description: "500 Credits - Perfect for trying out",
     popular: false,
   },
   pro: {
     id: "pro",
-    name: "Pro Pack",
-    credits: 60,
-    price: 4900, // in cents ($49.00)
-    priceDisplay: "$49",
-    description: "60 Credits - Best value for regular users",
+    name: "Business Pro",
+    credits: 1000,
+    price: 199900, // in cents ($1,999.00)
+    priceDisplay: "$1,999",
+    description: "1000 Credits - Best value for regular business",
     popular: true,
-    savings: "Save 18%",
   },
   agency: {
     id: "agency",
-    name: "Agency Pack",
-    credits: 200,
-    price: 12900, // in cents ($129.00)
-    priceDisplay: "$129",
-    description: "200 Credits - For teams and heavy users",
+    name: "Large Business",
+    credits: 2000,
+    price: 299900, // in cents ($2,999.00)
+    priceDisplay: "$2,999",
+    description: "2000 Credits - For Large Business Teams",
     popular: false,
-    savings: "Save 33%",
   },
 } as const;
 
