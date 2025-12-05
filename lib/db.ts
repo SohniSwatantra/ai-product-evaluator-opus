@@ -1716,3 +1716,358 @@ export async function getVoucherStats(): Promise<{
     throw error;
   }
 }
+
+// ============================================
+// Referral Code System Functions
+// ============================================
+
+export interface ReferralCode {
+  id: number;
+  code: string;
+  owner_name: string;
+  owner_email: string | null;
+  discount_percent: number;
+  commission_percent: number;
+  max_uses: number | null;
+  current_uses: number;
+  total_sales_amount: number;
+  total_commission_earned: number;
+  is_active: boolean;
+  expires_at: Date | null;
+  created_at: Date;
+}
+
+export interface ReferralUsage {
+  id: number;
+  referral_code_id: number;
+  user_id: string | null;
+  stripe_session_id: string;
+  sale_amount: number;
+  discount_amount: number;
+  commission_amount: number;
+  created_at: Date;
+}
+
+/**
+ * Initialize referral code tables
+ */
+export async function initReferralTables() {
+  try {
+    // Create referral_codes table
+    await sql`
+      CREATE TABLE IF NOT EXISTS referral_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        owner_name VARCHAR(255) NOT NULL,
+        owner_email VARCHAR(255),
+        discount_percent INTEGER DEFAULT 10,
+        commission_percent INTEGER DEFAULT 20,
+        max_uses INTEGER,
+        current_uses INTEGER DEFAULT 0,
+        total_sales_amount DECIMAL(10,2) DEFAULT 0,
+        total_commission_earned DECIMAL(10,2) DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create referral_usages table
+    await sql`
+      CREATE TABLE IF NOT EXISTS referral_usages (
+        id SERIAL PRIMARY KEY,
+        referral_code_id INTEGER REFERENCES referral_codes(id),
+        user_id VARCHAR(255),
+        stripe_session_id VARCHAR(255),
+        sale_amount DECIMAL(10,2),
+        discount_amount DECIMAL(10,2),
+        commission_amount DECIMAL(10,2),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(referral_code_id, stripe_session_id)
+      )
+    `;
+
+    // Create indices
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_referral_codes_code ON referral_codes(code)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_referral_codes_active ON referral_codes(is_active)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_referral_usages_code_id ON referral_usages(referral_code_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_referral_usages_stripe_session ON referral_usages(stripe_session_id)
+    `;
+
+    console.log("Referral tables initialized successfully");
+  } catch (error) {
+    console.error("Error initializing referral tables:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a random referral code
+ */
+export function generateReferralCode(prefix: string = "REF"): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = prefix + "-";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
+ * Create a new referral code (admin only)
+ */
+export async function createReferralCode(
+  ownerName: string,
+  ownerEmail: string | null = null,
+  discountPercent: number = 10,
+  commissionPercent: number = 20,
+  maxUses: number | null = null,
+  expiresAt: Date | null = null,
+  customCode?: string
+): Promise<ReferralCode> {
+  try {
+    const code = customCode || generateReferralCode();
+
+    const result = await sql`
+      INSERT INTO referral_codes (code, owner_name, owner_email, discount_percent, commission_percent, max_uses, expires_at)
+      VALUES (${code}, ${ownerName}, ${ownerEmail}, ${discountPercent}, ${commissionPercent}, ${maxUses}, ${expiresAt})
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+
+    console.log(`Created referral code: ${code} for ${ownerName}`);
+    return result[0] as ReferralCode;
+  } catch (error: any) {
+    if (error.code === '23505') {
+      throw new Error("A referral code with this code already exists");
+    }
+    console.error("Error creating referral code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all referral codes (admin only)
+ */
+export async function getReferralCodes(): Promise<ReferralCode[]> {
+  try {
+    const results = await sql`
+      SELECT id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+      FROM referral_codes
+      ORDER BY created_at DESC
+    `;
+    return results as ReferralCode[];
+  } catch (error) {
+    console.error("Error fetching referral codes:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get a referral code by code string
+ */
+export async function getReferralCodeByCode(code: string): Promise<ReferralCode | null> {
+  try {
+    const results = await sql`
+      SELECT id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+      FROM referral_codes
+      WHERE UPPER(code) = UPPER(${code})
+    `;
+    return results.length > 0 ? results[0] as ReferralCode : null;
+  } catch (error) {
+    console.error("Error fetching referral code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update a referral code (admin only)
+ */
+export async function updateReferralCode(
+  id: number,
+  updates: Partial<Pick<ReferralCode, 'owner_name' | 'owner_email' | 'discount_percent' | 'commission_percent' | 'max_uses' | 'is_active' | 'expires_at'>>
+): Promise<ReferralCode | null> {
+  try {
+    const result = await sql`
+      UPDATE referral_codes
+      SET
+        owner_name = COALESCE(${updates.owner_name || null}, owner_name),
+        owner_email = COALESCE(${updates.owner_email || null}, owner_email),
+        discount_percent = COALESCE(${updates.discount_percent ?? null}, discount_percent),
+        commission_percent = COALESCE(${updates.commission_percent ?? null}, commission_percent),
+        max_uses = COALESCE(${updates.max_uses ?? null}, max_uses),
+        is_active = COALESCE(${updates.is_active ?? null}, is_active),
+        expires_at = COALESCE(${updates.expires_at || null}, expires_at)
+      WHERE id = ${id}
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+    return result.length > 0 ? result[0] as ReferralCode : null;
+  } catch (error) {
+    console.error("Error updating referral code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a referral code (admin only)
+ */
+export async function deleteReferralCode(id: number): Promise<boolean> {
+  try {
+    const result = await sql`
+      DELETE FROM referral_codes
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return result.length > 0;
+  } catch (error) {
+    console.error("Error deleting referral code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Toggle referral code active status (admin only)
+ */
+export async function toggleReferralCodeActive(id: number, isActive: boolean): Promise<ReferralCode | null> {
+  try {
+    const result = await sql`
+      UPDATE referral_codes
+      SET is_active = ${isActive}
+      WHERE id = ${id}
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+    return result.length > 0 ? result[0] as ReferralCode : null;
+  } catch (error) {
+    console.error("Error toggling referral code active status:", error);
+    throw error;
+  }
+}
+
+/**
+ * Validate a referral code for checkout
+ * Returns the referral code details if valid, throws error if invalid
+ */
+export async function validateReferralCode(code: string): Promise<ReferralCode> {
+  const referral = await getReferralCodeByCode(code);
+
+  if (!referral) {
+    throw new Error("Invalid referral code");
+  }
+
+  if (!referral.is_active) {
+    throw new Error("This referral code is no longer active");
+  }
+
+  if (referral.expires_at && new Date(referral.expires_at) < new Date()) {
+    throw new Error("This referral code has expired");
+  }
+
+  if (referral.max_uses !== null && referral.current_uses >= referral.max_uses) {
+    throw new Error("This referral code has reached its maximum number of uses");
+  }
+
+  return referral;
+}
+
+/**
+ * Record a referral usage after successful payment
+ */
+export async function recordReferralUsage(
+  referralCodeId: number,
+  userId: string | null,
+  stripeSessionId: string,
+  saleAmount: number,
+  discountAmount: number,
+  commissionAmount: number
+): Promise<ReferralUsage> {
+  try {
+    // Insert the usage record
+    const usageResult = await sql`
+      INSERT INTO referral_usages (referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount)
+      VALUES (${referralCodeId}, ${userId}, ${stripeSessionId}, ${saleAmount}, ${discountAmount}, ${commissionAmount})
+      RETURNING id, referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount, created_at
+    `;
+
+    // Update the referral code stats
+    await sql`
+      UPDATE referral_codes
+      SET
+        current_uses = current_uses + 1,
+        total_sales_amount = total_sales_amount + ${saleAmount},
+        total_commission_earned = total_commission_earned + ${commissionAmount}
+      WHERE id = ${referralCodeId}
+    `;
+
+    console.log(`Recorded referral usage: code_id=${referralCodeId}, sale=$${saleAmount}, commission=$${commissionAmount}`);
+    return usageResult[0] as ReferralUsage;
+  } catch (error: any) {
+    if (error.code === '23505') {
+      console.log(`Referral usage already recorded for session ${stripeSessionId}`);
+      throw new Error("Referral usage already recorded for this session");
+    }
+    console.error("Error recording referral usage:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get referral usages for a specific referral code
+ */
+export async function getReferralUsages(referralCodeId: number): Promise<ReferralUsage[]> {
+  try {
+    const results = await sql`
+      SELECT id, referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount, created_at
+      FROM referral_usages
+      WHERE referral_code_id = ${referralCodeId}
+      ORDER BY created_at DESC
+    `;
+    return results as ReferralUsage[];
+  } catch (error) {
+    console.error("Error fetching referral usages:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get referral stats (admin only)
+ */
+export async function getReferralStats(): Promise<{
+  totalCodes: number;
+  activeCodes: number;
+  totalUses: number;
+  totalSales: number;
+  totalCommission: number;
+}> {
+  try {
+    const statsResult = await sql`
+      SELECT
+        COUNT(*) as total_codes,
+        COUNT(CASE WHEN is_active THEN 1 END) as active_codes,
+        SUM(current_uses) as total_uses,
+        SUM(total_sales_amount) as total_sales,
+        SUM(total_commission_earned) as total_commission
+      FROM referral_codes
+    `;
+
+    const stats = statsResult[0];
+    return {
+      totalCodes: parseInt(stats.total_codes) || 0,
+      activeCodes: parseInt(stats.active_codes) || 0,
+      totalUses: parseInt(stats.total_uses) || 0,
+      totalSales: parseFloat(stats.total_sales) || 0,
+      totalCommission: parseFloat(stats.total_commission) || 0
+    };
+  } catch (error) {
+    console.error("Error fetching referral stats:", error);
+    throw error;
+  }
+}
