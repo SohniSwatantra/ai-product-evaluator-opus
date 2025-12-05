@@ -213,7 +213,7 @@ export default function PricingPage() {
             <p className="text-lg font-semibold text-green-300">
               100 Free Credits to Start
               <span className="text-green-400/80 font-normal ml-2">
-                — Good enough for 10 full evaluations!
+                — Good enough for 2 full evaluations!
               </span>
             </p>
           </div>
