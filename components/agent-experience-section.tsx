@@ -475,12 +475,6 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
         </ul>
       </div>
 
-      {/* Footer Note */}
-      <div className="mt-6 p-3 sm:p-4 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
-        <p className="text-[10px] sm:text-xs text-purple-900 dark:text-purple-200">
-          <strong>Why AX Matters:</strong> Based on Netlify CEO Matt Biilmann's Agent Net Promoter Score (ANPS) concept. As AI agents become primary information gatekeepers, optimizing for agent experience will be as critical as traditional SEO. Websites with high AX scores will be more likely recommended by AI assistants to users.
-        </p>
-      </div>
     </div>
   );
 }
