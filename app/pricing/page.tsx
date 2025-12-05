@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket, Users, Tag } from "lucide-react";
 import { useUser } from "@stackframe/stack";
 import { cn } from "@/lib/utils";
 import { useCreditBalance } from "@/components/credits/credit-balance";
@@ -80,6 +80,16 @@ export default function PricingPage() {
   const [redeemingVoucher, setRedeemingVoucher] = useState(false);
   const [voucherMessage, setVoucherMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Referral code state
+  const [referralCode, setReferralCode] = useState("");
+  const [validatingReferral, setValidatingReferral] = useState(false);
+  const [appliedReferral, setAppliedReferral] = useState<{
+    code: string;
+    discount_percent: number;
+    owner_name: string;
+  } | null>(null);
+  const [referralMessage, setReferralMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
 
@@ -127,6 +137,42 @@ export default function PricingPage() {
     }
   };
 
+  const handleApplyReferral = async () => {
+    if (!referralCode.trim()) {
+      setReferralMessage({ type: 'error', text: 'Please enter a referral code' });
+      return;
+    }
+
+    try {
+      setValidatingReferral(true);
+      setReferralMessage(null);
+
+      const response = await fetch(`/api/referrals/validate?code=${encodeURIComponent(referralCode.trim())}`);
+      const data = await response.json();
+
+      if (data.valid) {
+        setAppliedReferral({
+          code: data.code,
+          discount_percent: data.discount_percent,
+          owner_name: data.owner_name,
+        });
+        setReferralMessage({ type: 'success', text: `${data.discount_percent}% discount applied!` });
+        setReferralCode("");
+      } else {
+        setReferralMessage({ type: 'error', text: data.error || 'Invalid referral code' });
+      }
+    } catch (err: any) {
+      setReferralMessage({ type: 'error', text: err.message || 'Failed to validate referral code' });
+    } finally {
+      setValidatingReferral(false);
+    }
+  };
+
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralMessage(null);
+  };
+
   const handlePurchase = async (packId: string) => {
     if (!user) {
       // Redirect to sign in
@@ -141,7 +187,10 @@ export default function PricingPage() {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packId }),
+        body: JSON.stringify({
+          packId,
+          referralCode: appliedReferral?.code || null
+        }),
       });
 
       const data = await response.json();
@@ -289,6 +338,74 @@ export default function PricingPage() {
           </div>
           )}
 
+          {/* Referral Code Section */}
+          <div className="mb-8 p-6 rounded-2xl border border-orange-500/30 bg-orange-500/10">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-orange-500/20">
+                  <Tag className="w-6 h-6 text-orange-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">Have a Referral Code?</h3>
+                  <p className="text-sm text-neutral-400">Apply a referral code to get a discount on your purchase</p>
+                </div>
+              </div>
+              <div className="flex-1 w-full md:w-auto">
+                {appliedReferral ? (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/20 border border-green-500/30">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <div className="flex-1">
+                      <p className="text-green-300 font-medium">
+                        {appliedReferral.discount_percent}% discount applied!
+                      </p>
+                      <p className="text-sm text-green-400/70">
+                        Code: {appliedReferral.code}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRemoveReferral}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyReferral()}
+                        placeholder="Enter referral code (e.g., REF-XXXXXX)"
+                        className="flex-1 px-4 py-3 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                      />
+                      <button
+                        onClick={handleApplyReferral}
+                        disabled={validatingReferral}
+                        className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {validatingReferral ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Apply"
+                        )}
+                      </button>
+                    </div>
+                    {referralMessage && (
+                      <p className={cn(
+                        "text-sm mt-2",
+                        referralMessage.type === 'success' ? "text-green-400" : "text-red-400"
+                      )}>
+                        {referralMessage.text}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Error Message */}
           {error && (
             <div className="mb-8 p-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300">
@@ -344,11 +461,27 @@ export default function PricingPage() {
                   </div>
 
                   <div className="mb-6">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-bold text-white">
-                        {pack.price}
-                      </span>
-                    </div>
+                    {appliedReferral ? (
+                      <>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-5xl font-bold text-green-400">
+                            ${Math.round(parseInt(pack.price.replace('$', '')) * (1 - appliedReferral.discount_percent / 100))}
+                          </span>
+                          <span className="text-2xl text-neutral-500 line-through">
+                            {pack.price}
+                          </span>
+                        </div>
+                        <p className="text-green-400 text-sm mt-1">
+                          {appliedReferral.discount_percent}% off with code: {appliedReferral.code}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-5xl font-bold text-white">
+                          {pack.price}
+                        </span>
+                      </div>
+                    )}
                     <p className="text-neutral-400 mt-1">
                       {pack.credits} credits <span className="text-neutral-500">({pack.pricePerCredit}/credit)</span>
                     </p>

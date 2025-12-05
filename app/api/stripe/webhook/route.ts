@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { constructWebhookEvent, CREDIT_PACKS, CreditPackId } from "@/lib/stripe";
-import { addUserCredits, initCreditTables } from "@/lib/db";
+import { addUserCredits, initCreditTables, recordReferralUsage, initReferralTables } from "@/lib/db";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -53,6 +53,41 @@ export async function POST(request: NextRequest) {
       await addUserCredits(userId, credits, description, session.id);
 
       console.log(`Successfully added ${credits} credits to user ${userId}`);
+
+      // Handle referral tracking if a referral code was used
+      const referralCodeId = session.metadata?.referralCodeId;
+      const referralCode = session.metadata?.referralCode;
+      const commissionPercent = parseInt(session.metadata?.commissionPercent || "0", 10);
+      const originalPrice = parseInt(session.metadata?.originalPrice || "0", 10);
+      const discountAmount = parseInt(session.metadata?.discountAmount || "0", 10);
+
+      if (referralCodeId && referralCode) {
+        try {
+          // Initialize referral tables
+          await initReferralTables();
+
+          // Calculate the final sale amount (what was actually charged) in dollars
+          const saleAmount = (originalPrice - discountAmount) / 100;
+          // Calculate commission in dollars
+          const commissionAmount = saleAmount * (commissionPercent / 100);
+          // Discount amount in dollars
+          const discountAmountDollars = discountAmount / 100;
+
+          await recordReferralUsage(
+            parseInt(referralCodeId, 10),
+            userId,
+            session.id,
+            saleAmount,
+            discountAmountDollars,
+            commissionAmount
+          );
+
+          console.log(`Recorded referral usage: code=${referralCode}, sale=$${saleAmount}, commission=$${commissionAmount}`);
+        } catch (referralError: any) {
+          // Don't fail the webhook if referral tracking fails
+          console.error("Error recording referral usage:", referralError.message);
+        }
+      }
     }
 
     return NextResponse.json({ received: true });

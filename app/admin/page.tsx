@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins, Ticket, Copy, Check, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins, Ticket, Copy, Check, ToggleLeft, ToggleRight, Users, DollarSign } from "lucide-react";
 import type { AXModelConfig } from "@/types";
-import type { VoucherCode } from "@/lib/db";
+import type { VoucherCode, ReferralCode } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export default function AdminPage() {
@@ -52,10 +52,34 @@ export default function AdminPage() {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  // Referral state
+  const [referrals, setReferrals] = useState<ReferralCode[]>([]);
+  const [referralStats, setReferralStats] = useState<{
+    totalCodes: number;
+    activeCodes: number;
+    totalUses: number;
+    totalSales: number;
+    totalCommission: number;
+  } | null>(null);
+  const [loadingReferrals, setLoadingReferrals] = useState(false);
+  const [showReferralForm, setShowReferralForm] = useState(false);
+  const [newReferral, setNewReferral] = useState({
+    owner_name: "",
+    owner_email: "",
+    discount_percent: 10,
+    commission_percent: 20,
+    max_uses: "",
+    expires_at: "",
+    custom_code: ""
+  });
+  const [creatingReferral, setCreatingReferral] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+
   useEffect(() => {
     checkAdminStatus();
     fetchCurrentBalance();
     fetchVouchers();
+    fetchReferrals();
   }, []);
 
   const fetchCurrentBalance = async () => {
@@ -342,6 +366,106 @@ export default function AdminPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  // Referral functions
+  const fetchReferrals = async () => {
+    try {
+      setLoadingReferrals(true);
+      const response = await fetch("/api/admin/referrals");
+      const data = await response.json();
+      if (data.referrals) {
+        setReferrals(data.referrals);
+        setReferralStats(data.stats);
+      }
+    } catch (err) {
+      console.error("Failed to fetch referrals:", err);
+    } finally {
+      setLoadingReferrals(false);
+    }
+  };
+
+  const handleCreateReferral = async () => {
+    if (!newReferral.owner_name.trim()) {
+      setReferralError("Owner name is required");
+      return;
+    }
+
+    try {
+      setCreatingReferral(true);
+      setReferralError(null);
+
+      const response = await fetch("/api/admin/referrals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          owner_name: newReferral.owner_name,
+          owner_email: newReferral.owner_email || null,
+          discount_percent: newReferral.discount_percent,
+          commission_percent: newReferral.commission_percent,
+          max_uses: newReferral.max_uses ? parseInt(newReferral.max_uses) : null,
+          expires_at: newReferral.expires_at || null,
+          custom_code: newReferral.custom_code || null
+        })
+      });
+
+      const data = await response.json();
+      if (data.referral) {
+        setReferrals([data.referral, ...referrals]);
+        setShowReferralForm(false);
+        setNewReferral({
+          owner_name: "",
+          owner_email: "",
+          discount_percent: 10,
+          commission_percent: 20,
+          max_uses: "",
+          expires_at: "",
+          custom_code: ""
+        });
+        fetchReferrals(); // Refresh stats
+      } else {
+        setReferralError(data.error || "Failed to create referral code");
+      }
+    } catch (err: any) {
+      setReferralError(err.message || "Failed to create referral code");
+    } finally {
+      setCreatingReferral(false);
+    }
+  };
+
+  const handleDeleteReferral = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this referral code?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/referrals?id=${id}`, {
+        method: "DELETE"
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setReferrals(referrals.filter(r => r.id !== id));
+        fetchReferrals(); // Refresh stats
+      }
+    } catch (err) {
+      console.error("Failed to delete referral:", err);
+    }
+  };
+
+  const handleToggleReferral = async (id: number, currentActive: boolean) => {
+    try {
+      const response = await fetch("/api/admin/referrals", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !currentActive })
+      });
+
+      const data = await response.json();
+      if (data.referral) {
+        setReferrals(referrals.map(r => r.id === id ? data.referral : r));
+      }
+    } catch (err) {
+      console.error("Failed to toggle referral:", err);
+    }
+  };
+
   if (isAdmin === null) {
     return (
       <BackgroundGlow>
@@ -625,6 +749,276 @@ export default function AdminPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteVoucher(voucher.id)}
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Referral Codes Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Users className="w-6 h-6 text-orange-400" />
+              <h2 className="text-xl font-bold text-white">Referral Codes</h2>
+              {referralStats && (
+                <span className="text-sm text-neutral-400">
+                  ({referralStats.activeCodes} active, ${referralStats.totalSales.toFixed(2)} in sales)
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowReferralForm(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Referral
+            </button>
+          </div>
+
+          {/* Referral Stats Overview */}
+          {referralStats && (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="p-4 rounded-xl border border-white/10 bg-neutral-900">
+                <p className="text-xs text-neutral-500">Total Codes</p>
+                <p className="text-2xl font-bold text-white">{referralStats.totalCodes}</p>
+              </div>
+              <div className="p-4 rounded-xl border border-white/10 bg-neutral-900">
+                <p className="text-xs text-neutral-500">Active</p>
+                <p className="text-2xl font-bold text-green-400">{referralStats.activeCodes}</p>
+              </div>
+              <div className="p-4 rounded-xl border border-white/10 bg-neutral-900">
+                <p className="text-xs text-neutral-500">Total Uses</p>
+                <p className="text-2xl font-bold text-white">{referralStats.totalUses}</p>
+              </div>
+              <div className="p-4 rounded-xl border border-white/10 bg-neutral-900">
+                <p className="text-xs text-neutral-500">Total Sales</p>
+                <p className="text-2xl font-bold text-emerald-400">${referralStats.totalSales.toFixed(2)}</p>
+              </div>
+              <div className="p-4 rounded-xl border border-white/10 bg-neutral-900">
+                <p className="text-xs text-neutral-500">Commission Owed</p>
+                <p className="text-2xl font-bold text-orange-400">${referralStats.totalCommission.toFixed(2)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Referral Error */}
+          {referralError && (
+            <div className="p-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300">
+              {referralError}
+              <button
+                onClick={() => setReferralError(null)}
+                className="ml-4 text-red-400 hover:text-red-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Create Referral Form */}
+          {showReferralForm && (
+            <div className="p-6 rounded-2xl border border-orange-500/30 bg-orange-500/10">
+              <h3 className="text-lg font-semibold text-white mb-4">Create New Referral Code</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Owner/Affiliate Name *</label>
+                  <input
+                    type="text"
+                    value={newReferral.owner_name}
+                    onChange={(e) => setNewReferral({ ...newReferral, owner_name: e.target.value })}
+                    placeholder="John Doe"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Owner Email (optional)</label>
+                  <input
+                    type="email"
+                    value={newReferral.owner_email}
+                    onChange={(e) => setNewReferral({ ...newReferral, owner_email: e.target.value })}
+                    placeholder="john@example.com"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Custom Code (optional)</label>
+                  <input
+                    type="text"
+                    value={newReferral.custom_code}
+                    onChange={(e) => setNewReferral({ ...newReferral, custom_code: e.target.value.toUpperCase() })}
+                    placeholder="REF-XXXXXX"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Discount % (for users)</label>
+                  <input
+                    type="number"
+                    value={newReferral.discount_percent}
+                    onChange={(e) => setNewReferral({ ...newReferral, discount_percent: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Commission % (for affiliate)</label>
+                  <input
+                    type="number"
+                    value={newReferral.commission_percent}
+                    onChange={(e) => setNewReferral({ ...newReferral, commission_percent: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    max="100"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Max Uses (empty = unlimited)</label>
+                  <input
+                    type="number"
+                    value={newReferral.max_uses}
+                    onChange={(e) => setNewReferral({ ...newReferral, max_uses: e.target.value })}
+                    placeholder="Unlimited"
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="block text-sm text-neutral-400 mb-1">Expires At (optional)</label>
+                  <input
+                    type="datetime-local"
+                    value={newReferral.expires_at}
+                    onChange={(e) => setNewReferral({ ...newReferral, expires_at: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={handleCreateReferral}
+                  disabled={creatingReferral || !newReferral.owner_name.trim()}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {creatingReferral ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Users className="w-4 h-4" />
+                  )}
+                  Create Referral Code
+                </button>
+                <button
+                  onClick={() => setShowReferralForm(false)}
+                  className="px-4 py-2 text-neutral-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Referrals List */}
+          <div className="p-6 rounded-2xl border border-white/10 bg-black">
+            <h3 className="text-lg font-semibold text-white mb-4">All Referral Codes</h3>
+
+            {loadingReferrals ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+              </div>
+            ) : referrals.length === 0 ? (
+              <p className="text-neutral-400 text-center py-8">No referral codes created yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {referrals.map((referral) => (
+                  <div
+                    key={referral.id}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-xl border transition-colors",
+                      referral.is_active
+                        ? "border-white/10 bg-neutral-900"
+                        : "border-white/5 bg-neutral-900/50 opacity-60"
+                    )}
+                  >
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-7 gap-4">
+                      <div>
+                        <p className="text-xs text-neutral-500">Code</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-orange-400 font-mono text-sm">{referral.code}</code>
+                          <button
+                            onClick={() => copyToClipboard(referral.code)}
+                            className="p-1 hover:bg-white/10 rounded transition-colors"
+                            title="Copy code"
+                          >
+                            {copiedCode === referral.code ? (
+                              <Check className="w-3 h-3 text-green-400" />
+                            ) : (
+                              <Copy className="w-3 h-3 text-neutral-400" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Owner</p>
+                        <p className="text-white font-medium text-sm">{referral.owner_name}</p>
+                        {referral.owner_email && (
+                          <p className="text-xs text-neutral-500">{referral.owner_email}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Discount</p>
+                        <p className="text-emerald-400 font-medium">{referral.discount_percent}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Commission</p>
+                        <p className="text-orange-400 font-medium">{referral.commission_percent}%</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Uses / Sales</p>
+                        <p className="text-neutral-300 text-sm">
+                          {referral.current_uses}
+                          {referral.max_uses !== null ? ` / ${referral.max_uses}` : ' / ∞'}
+                          <span className="text-emerald-400 ml-2">${Number(referral.total_sales_amount).toFixed(2)}</span>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Commission Earned</p>
+                        <p className="text-orange-400 font-medium">${Number(referral.total_commission_earned).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-neutral-500">Status</p>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          referral.is_active
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-neutral-500/20 text-neutral-400"
+                        )}>
+                          {referral.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleReferral(referral.id, referral.is_active)}
+                        className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          referral.is_active
+                            ? "text-green-400 hover:bg-green-500/20"
+                            : "text-neutral-500 hover:bg-neutral-800"
+                        )}
+                        title={referral.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {referral.is_active ? (
+                          <ToggleRight className="w-5 h-5" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReferral(referral.id)}
                         className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
                         title="Delete"
                       >

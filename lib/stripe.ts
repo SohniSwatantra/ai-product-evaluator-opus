@@ -55,6 +55,13 @@ export const CREDIT_PACKS = {
 
 export type CreditPackId = keyof typeof CREDIT_PACKS;
 
+export interface ReferralInfo {
+  code: string;
+  codeId: number;
+  discountPercent: number;
+  commissionPercent: number;
+}
+
 /**
  * Create a Stripe checkout session for purchasing credits
  */
@@ -63,12 +70,45 @@ export async function createCheckoutSession(
   userId: string,
   userEmail: string,
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
+  referralInfo?: ReferralInfo
 ): Promise<Stripe.Checkout.Session> {
   const pack = CREDIT_PACKS[packId];
 
   if (!pack) {
     throw new Error(`Invalid pack ID: ${packId}`);
+  }
+
+  // Calculate discounted price if referral code is applied
+  let finalPrice = pack.price;
+  let discountAmount = 0;
+
+  if (referralInfo && referralInfo.discountPercent > 0) {
+    discountAmount = Math.round(pack.price * (referralInfo.discountPercent / 100));
+    finalPrice = pack.price - discountAmount;
+  }
+
+  // Build product description with discount info
+  let productDescription = pack.description;
+  if (referralInfo) {
+    productDescription = `${pack.description} (${referralInfo.discountPercent}% off with code: ${referralInfo.code})`;
+  }
+
+  // Build metadata
+  const metadata: Record<string, string> = {
+    userId,
+    packId,
+    credits: pack.credits.toString(),
+    originalPrice: pack.price.toString(),
+  };
+
+  // Add referral info to metadata if present
+  if (referralInfo) {
+    metadata.referralCode = referralInfo.code;
+    metadata.referralCodeId = referralInfo.codeId.toString();
+    metadata.discountPercent = referralInfo.discountPercent.toString();
+    metadata.commissionPercent = referralInfo.commissionPercent.toString();
+    metadata.discountAmount = discountAmount.toString();
   }
 
   const session = await getStripe().checkout.sessions.create({
@@ -79,9 +119,9 @@ export async function createCheckoutSession(
           currency: "usd",
           product_data: {
             name: pack.name,
-            description: pack.description,
+            description: productDescription,
           },
-          unit_amount: pack.price,
+          unit_amount: finalPrice,
         },
         quantity: 1,
       },
@@ -90,11 +130,7 @@ export async function createCheckoutSession(
     success_url: successUrl,
     cancel_url: cancelUrl,
     customer_email: userEmail,
-    metadata: {
-      userId,
-      packId,
-      credits: pack.credits.toString(),
-    },
+    metadata,
   });
 
   return session;
