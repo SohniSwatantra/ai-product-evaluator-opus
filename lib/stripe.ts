@@ -26,8 +26,8 @@ export const CREDIT_PACKS = {
     id: "starter",
     name: "Solo",
     credits: 500,
-    price: 149900, // in cents ($1,499.00)
-    priceDisplay: "$1,499",
+    price: 149900, // in cents (€1,499.00)
+    priceDisplay: "€1,499",
     description: "500 Credits - Perfect for trying out",
     popular: false,
   },
@@ -35,8 +35,8 @@ export const CREDIT_PACKS = {
     id: "pro",
     name: "Business Pro",
     credits: 1000,
-    price: 199900, // in cents ($1,999.00)
-    priceDisplay: "$1,999",
+    price: 199900, // in cents (€1,999.00)
+    priceDisplay: "€1,999",
     description: "1000 Credits - Best value for regular business",
     popular: true,
   },
@@ -44,8 +44,8 @@ export const CREDIT_PACKS = {
     id: "agency",
     name: "Large Business",
     credits: 2000,
-    price: 299900, // in cents ($2,999.00)
-    priceDisplay: "$2,999",
+    price: 299900, // in cents (€2,999.00)
+    priceDisplay: "€2,999",
     description: "2000 Credits - For Large Business Teams",
     popular: false,
   },
@@ -114,7 +114,7 @@ export async function createCheckoutSession(
     line_items: [
       {
         price_data: {
-          currency: "usd",
+          currency: "eur",
           product_data: {
             name: pack.name,
             description: productDescription,
