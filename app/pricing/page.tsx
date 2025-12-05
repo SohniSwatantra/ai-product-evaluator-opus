@@ -14,7 +14,7 @@ const CREDIT_PACKS = [
     id: "starter",
     name: "Solo",
     credits: 500,
-    price: "$1,499",
+    price: "€1,499",
     description: "Perfect for trying out",
     icon: Sparkles,
     popular: false,
@@ -30,7 +30,7 @@ const CREDIT_PACKS = [
     id: "pro",
     name: "Business Pro",
     credits: 1000,
-    price: "$1,999",
+    price: "€1,999",
     description: "Best value for regular business",
     icon: Zap,
     popular: true,
@@ -47,7 +47,7 @@ const CREDIT_PACKS = [
     id: "agency",
     name: "Large Business",
     credits: 2000,
-    price: "$2,999",
+    price: "€2,999",
     description: "For Large Business Teams",
     icon: Building2,
     popular: false,
@@ -462,7 +462,7 @@ export default function PricingPage() {
                       <>
                         <div className="flex items-baseline gap-2">
                           <span className="text-5xl font-bold text-green-400">
-                            ${Math.round(parseInt(pack.price.replace('$', '')) * (1 - appliedReferral.discount_percent / 100))}
+                            €{Math.round(parseInt(pack.price.replace('€', '').replace(',', '')) * (1 - appliedReferral.discount_percent / 100)).toLocaleString()}
                           </span>
                           <span className="text-2xl text-neutral-500 line-through">
                             {pack.price}
