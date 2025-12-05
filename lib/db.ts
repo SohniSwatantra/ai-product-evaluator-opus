@@ -911,7 +911,7 @@ export async function initCreditTables() {
 }
 
 // Free credits configuration
-const FREE_CREDITS_FOR_NEW_USERS = 10;
+const FREE_CREDITS_FOR_NEW_USERS = 100;
 const ADMIN_CREDITS = 300;
 const ADMIN_EMAIL = "sohni.swatantra@gmail.com";
 
