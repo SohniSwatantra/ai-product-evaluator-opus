@@ -15,7 +15,7 @@ interface ProductUrlFormProps {
   isAnalyzing: boolean;
 }
 
-const CREDIT_COST = 1; // Base evaluation costs 1 credit
+const CREDIT_COST = 10; // Base evaluation costs 10 credits
 
 export function ProductUrlForm({ onAnalyze, isAnalyzing }: ProductUrlFormProps) {
   const [url, setUrl] = useState("");
