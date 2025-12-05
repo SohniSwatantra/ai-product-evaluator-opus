@@ -45,7 +45,7 @@ export function Navbar() {
         {/* Logo - Always visible */}
         <div className="flex items-center gap-2 px-2 cursor-pointer" onClick={() => router.push("/")}>
           <Brain className="w-5 h-5 text-[#4A044E]" />
-          <span className="font-bold font-mono text-[#4A044E] text-sm md:text-lg">AI Product Evaluator</span>
+          <span className="font-bold font-mono text-[#4A044E] text-sm md:text-lg">2031ai</span>
         </div>
 
         {/* Desktop Navigation Links - Hidden on mobile */}

@@ -246,7 +246,7 @@ export function generateSocialMediaSummary(evaluation: ProductEvaluation): strin
 💰 Purchase Intent: ${buyingIntentProbability}%
 📊 Anchor: ${purchaseIntentAnchor.toUpperCase()}
 
-Evaluated with AI Product Evaluator 🤖
+Evaluated with 2031ai 🤖
 ${url}`;
 }
 

@@ -46,8 +46,8 @@ export async function callOpenRouter(
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://ai-product-evaluator.netlify.app",
-      "X-Title": "AI Product Evaluator - AX Analysis"
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "https://2031ai.com",
+      "X-Title": "2031ai - AX Analysis"
     },
     body: JSON.stringify({
       model: modelId,
