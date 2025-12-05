@@ -1,4 +1,21 @@
-<!-- 831ed274-8ad6-46ee-88f0-94f7de5e6fa4 00a977f6-9c44-404c-9fa7-53e2cfd0d8bd -->
+---
+name: Multi-Model AX Evaluation Implementation Plan
+overview: ""
+todos:
+  - id: 0f1fcabc-7045-4236-acfd-f714b5a8e8ff
+    content: Update types/index.ts to support multi-model AX results
+    status: pending
+  - id: 23b9170d-5c12-4208-b6c5-ce1a6685beb6
+    content: Implement OpenRouter client and multi-model logic in lib/ax-evaluator.ts
+    status: pending
+  - id: 43349015-e23c-449a-bd98-47eac8a79213
+    content: Update worker script to use multi-model evaluation
+    status: pending
+  - id: 32805860-f060-4e0d-adfc-d54d6d24ac27
+    content: Update Agent Experience UI component to show comparison and aggregate
+    status: pending
+---
+
 # Multi-Model AX Evaluation Implementation Plan
 
 ## Overview
@@ -60,10 +77,3 @@ This plan upgrades the Agent Experience (AX) evaluation system to use multiple L
 -   Test with a mock product URL.
 -   Verify all 5 models return scores.
 -   Verify aggregation logic.
-
-### To-dos
-
-- [ ] Update types/index.ts to support multi-model AX results
-- [ ] Implement OpenRouter client and multi-model logic in lib/ax-evaluator.ts
-- [ ] Update worker script to use multi-model evaluation
-- [ ] Update Agent Experience UI component to show comparison and aggregate
