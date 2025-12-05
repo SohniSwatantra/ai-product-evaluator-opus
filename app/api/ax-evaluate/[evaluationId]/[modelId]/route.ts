@@ -102,11 +102,11 @@ export async function POST(
         completed_at: new Date().toISOString()
       });
 
-      // Deduct credit for signed-in users on successful completion
+      // Deduct credits for signed-in users on successful completion (10 credits per model run)
       if (userId) {
         try {
-          await deductUserCredits(userId, 1, `AX evaluation: ${modelConfig.display_name}`);
-          console.log(`💳 Deducted 1 credit from user ${userId} for ${modelConfig.display_name}`);
+          await deductUserCredits(userId, 10, `AX evaluation: ${modelConfig.display_name}`);
+          console.log(`💳 Deducted 10 credits from user ${userId} for ${modelConfig.display_name}`);
         } catch (creditError) {
           console.error("Failed to deduct credit:", creditError);
           // Don't fail the evaluation if credit deduction fails

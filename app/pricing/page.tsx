@@ -12,10 +12,9 @@ import { useCreditBalance } from "@/components/credits/credit-balance";
 const CREDIT_PACKS = [
   {
     id: "starter",
-    name: "Starter",
-    credits: 30,
-    price: "$29",
-    pricePerCredit: "$0.97",
+    name: "Solo",
+    credits: 500,
+    price: "$1,499",
     description: "Perfect for trying out",
     icon: Sparkles,
     popular: false,
@@ -29,15 +28,13 @@ const CREDIT_PACKS = [
   },
   {
     id: "pro",
-    name: "Pro",
-    credits: 60,
-    price: "$49",
-    pricePerCredit: "$0.82",
-    description: "Best value for regular users",
+    name: "Business Pro",
+    credits: 1000,
+    price: "$1,999",
+    description: "Best value for regular business",
     icon: Zap,
     popular: true,
     color: "purple",
-    savings: "Save 18%",
     features: [
       "60 model evaluation runs",
       "Full AI-powered reports",
@@ -48,15 +45,13 @@ const CREDIT_PACKS = [
   },
   {
     id: "agency",
-    name: "Agency",
-    credits: 200,
-    price: "$129",
-    pricePerCredit: "$0.65",
-    description: "For teams and agencies",
+    name: "Large Business",
+    credits: 2000,
+    price: "$2,999",
+    description: "For Large Business Teams",
     icon: Building2,
     popular: false,
     color: "amber",
-    savings: "Save 33%",
     features: [
       "200 model evaluation runs",
       "Full AI-powered reports",
@@ -233,7 +228,7 @@ export default function PricingPage() {
               Simple, Transparent Pricing
             </h1>
             <p className="text-lg text-neutral-400 max-w-2xl mx-auto">
-              1 Credit = 1 Model Run. Run up to 5 models per evaluation.
+              10 Credits = 1 Model Run. Run up to 5 models per evaluation.
               <br />
               <span className="text-purple-400">AX Council is free when all models are run!</span>
             </p>
@@ -338,7 +333,8 @@ export default function PricingPage() {
           </div>
           )}
 
-          {/* Referral Code Section */}
+          {/* Referral Code Section - Only for signed-in users */}
+          {user && (
           <div className="mb-8 p-6 rounded-2xl border border-orange-500/30 bg-orange-500/10">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
               <div className="flex items-center gap-3">
@@ -405,6 +401,7 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Error Message */}
           {error && (
@@ -483,7 +480,7 @@ export default function PricingPage() {
                       </div>
                     )}
                     <p className="text-neutral-400 mt-1">
-                      {pack.credits} credits <span className="text-neutral-500">({pack.pricePerCredit}/credit)</span>
+                      {pack.credits} credits
                     </p>
                   </div>
 
@@ -531,7 +528,7 @@ export default function PricingPage() {
                 </div>
                 <h3 className="font-semibold text-white mb-2">Base Evaluation</h3>
                 <p className="text-sm text-neutral-400">
-                  Initial analysis with Claude Opus 4.5 is <span className="text-green-400 font-semibold">1 credit</span>
+                  Initial analysis with Claude Opus 4.5 costs <span className="text-green-400 font-semibold">10 credits</span>
                 </p>
               </div>
               <div className="text-center">
@@ -540,7 +537,7 @@ export default function PricingPage() {
                 </div>
                 <h3 className="font-semibold text-white mb-2">Additional Models</h3>
                 <p className="text-sm text-neutral-400">
-                  Each additional model (GPT-5.1, Gemini, etc.) costs <span className="text-purple-400 font-semibold">1 credit</span>
+                  Each additional model (GPT-5.1, Gemini, etc.) costs <span className="text-purple-400 font-semibold">10 credits</span>
                 </p>
               </div>
               <div className="text-center">
