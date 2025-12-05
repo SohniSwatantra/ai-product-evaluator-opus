@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Product Evaluator | Predict Human Buying Intent",
+  title: "2031ai | Predict Human Buying Intent",
   description: "Use AI to evaluate products and predict human buying intent with 95% accuracy. Based on latest research in AI e-commerce behavior.",
 };
 
