@@ -29,8 +29,8 @@ export function Navbar() {
   const currentTheme = resolvedTheme ?? theme ?? "light";
 
   const handleToggleTheme = () => {
-    if (!mounted) return;
-    setTheme(currentTheme === "dark" ? "light" : "dark");
+    // Dark mode is enforced - toggle disabled
+    return;
   };
 
   const handleSignOut = async () => {
