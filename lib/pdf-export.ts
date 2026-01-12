@@ -117,16 +117,17 @@ export async function exportToPDF(
     let position = 0;
 
     // Add first page
-    // Use lossless PNG to keep brand colors vivid in the PDF output
-    const imgData = canvas.toDataURL("image/png");
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    // Use JPEG format for better compatibility with jspdf 3.x (PNG has known issues)
+    // High quality (0.95) preserves visual quality while ensuring reliable PDF generation
+    const imgData = canvas.toDataURL("image/jpeg", quality);
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
     // Add additional pages if content is longer than one page
     while (heightLeft > 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
 
@@ -211,14 +212,15 @@ export async function generatePDFBlob(
     let position = 0;
 
     // Add pages
-    const imgData = canvas.toDataURL("image/png");
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+    // Use JPEG format for better compatibility with jspdf 3.x (PNG has known issues)
+    const imgData = canvas.toDataURL("image/jpeg", quality);
+    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
 
     while (heightLeft > 0) {
       position = heightLeft - imgHeight;
       pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
     }
 
