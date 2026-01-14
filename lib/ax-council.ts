@@ -92,7 +92,7 @@ Be concise and professional. Do not use emojis.`;
   try {
     // Use Claude (Anthropic) as the head of council via OpenRouter
     const response = await callOpenRouter(
-      "anthropic/claude-sonnet-4",
+      "anthropic/claude-haiku-4-5",
       prompt,
       500
     );
