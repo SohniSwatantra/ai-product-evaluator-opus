@@ -1104,10 +1104,10 @@ export async function seedAXModelConfigs(): Promise<void> {
         sort_order: 2
       },
       {
-        model_id: "claude-sonnet-4.5",
-        display_name: "Claude Sonnet 4.5",
+        model_id: "claude-haiku-4.5",
+        display_name: "Claude Haiku 4.5",
         provider: "Anthropic",
-        openrouter_model_id: "anthropic/claude-sonnet-4.5",
+        openrouter_model_id: "anthropic/claude-haiku-4-5",
         is_enabled: true,
         sort_order: 3
       },
