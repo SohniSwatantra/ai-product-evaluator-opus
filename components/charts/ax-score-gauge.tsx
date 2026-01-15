@@ -9,13 +9,17 @@ interface AXScoreGaugeProps {
 }
 
 export function AXScoreGauge({ axScore, anps }: AXScoreGaugeProps) {
-  const color = getAXScoreColor(axScore);
-  const anpsCategory = getANPSCategory(anps);
+  // Ensure valid numbers with defaults
+  const safeAxScore = typeof axScore === "number" ? axScore : 0;
+  const safeAnps = typeof anps === "number" ? anps : 0;
+
+  const color = getAXScoreColor(safeAxScore);
+  const anpsCategory = getANPSCategory(safeAnps);
 
   const data = [
     {
       name: "AX Score",
-      value: axScore,
+      value: safeAxScore,
       fill: color,
     },
   ];
@@ -55,7 +59,7 @@ export function AXScoreGauge({ axScore, anps }: AXScoreGaugeProps) {
         </ResponsiveContainer>
         <div className="text-center -mt-4">
           <div className="text-3xl sm:text-4xl font-bold" style={{ color }}>
-            {axScore}/100
+            {safeAxScore}/100
           </div>
           <div className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">
             Agent Experience Score
@@ -70,7 +74,7 @@ export function AXScoreGauge({ axScore, anps }: AXScoreGaugeProps) {
             ANPS (Agent NPS)
           </div>
           <div className="text-3xl sm:text-5xl font-bold" style={{ color: anpsColor }}>
-            {anps > 0 ? "+" : ""}{anps}
+            {safeAnps > 0 ? "+" : ""}{safeAnps}
           </div>
           <div className="text-sm font-semibold mt-2" style={{ color: anpsColor }}>
             {anpsCategory}
