@@ -8,10 +8,15 @@ interface FactorRadarChartProps {
 }
 
 export function FactorRadarChart({ factors }: FactorRadarChartProps) {
+  // Return null if factors is not a valid array
+  if (!factors || !Array.isArray(factors) || factors.length === 0) {
+    return null;
+  }
+
   // Transform factors for recharts
   const chartData = factors.map((factor) => ({
-    factor: factor.name,
-    score: factor.score,
+    factor: factor?.name || "Unknown",
+    score: typeof factor?.score === "number" ? factor.score : 0,
     fullMark: 100,
   }));
 
