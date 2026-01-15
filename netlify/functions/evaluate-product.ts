@@ -160,7 +160,7 @@ async function enrichWithSectionRecommendations(
   anthropic: Anthropic
 ) {
   try {
-    if (scrapedData.error || !scrapedData.sectionScreenshots) {
+    if (scrapedData.error) {
       return;
     }
 
@@ -212,24 +212,10 @@ Provide 4-6 section recommendations focusing on the most impactful improvements 
 
     const sectionedRecommendations: SectionRecommendation[] = JSON.parse(sectionJsonMatch[0]);
 
-    const sectionNameMapping: Record<string, keyof NonNullable<typeof scrapedData.sectionScreenshots>> = {
-      Pricing: "pricing",
-      "Social Proof": "socialProof",
-      "Trust Signals": "trustSignals",
-      "Marketing Elements": "marketing",
-      Features: "features",
-      "Hero Section": "hero",
-    };
-
+    // Use hero screenshot as fallback for all sections
     for (const section of sectionedRecommendations) {
-      const key = sectionNameMapping[section.section];
-      if (key && scrapedData.sectionScreenshots?.[key]) {
-        section.screenshotPath = scrapedData.sectionScreenshots[key];
-        section.isFallbackScreenshot = false;
-      } else {
-        section.screenshotPath = scrapedData.heroScreenshotPath || scrapedData.screenshotPath;
-        section.isFallbackScreenshot = true;
-      }
+      section.screenshotPath = scrapedData.heroScreenshotPath || scrapedData.screenshotPath;
+      section.isFallbackScreenshot = true;
     }
 
     evaluation.sectionedRecommendations = sectionedRecommendations;
@@ -275,16 +261,6 @@ async function uploadScreenshotsToR2({
       evaluation.websiteSnapshot.heroScreenshotPath = url;
     }
   });
-
-  if (evaluation.websiteSnapshot.sectionScreenshots) {
-    for (const [section, localPath] of Object.entries(evaluation.websiteSnapshot.sectionScreenshots)) {
-      queue(localPath, (url) => {
-        if (evaluation.websiteSnapshot?.sectionScreenshots) {
-          evaluation.websiteSnapshot.sectionScreenshots[section as keyof SectionScreenshotData] = url;
-        }
-      });
-    }
-  }
 
   if (evaluation.sectionedRecommendations) {
     for (const recommendation of evaluation.sectionedRecommendations) {
