@@ -108,9 +108,12 @@ interface EvaluationCardProps {
 }
 
 function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
-  const scoreColor = evaluation.buyingIntentProbability >= 67
+  // Safely handle missing or invalid data
+  const buyingIntent = typeof evaluation.buyingIntentProbability === 'number' ? evaluation.buyingIntentProbability : 0;
+
+  const scoreColor = buyingIntent >= 67
     ? "text-green-600 dark:text-green-400"
-    : evaluation.buyingIntentProbability >= 34
+    : buyingIntent >= 34
     ? "text-yellow-600 dark:text-yellow-400"
     : "text-red-600 dark:text-red-400";
 
@@ -133,7 +136,13 @@ function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
               className="text-sm font-semibold text-black dark:text-white hover:underline truncate flex items-center gap-1"
               onClick={(e) => e.stopPropagation()}
             >
-              {new URL(evaluation.url).hostname}
+              {(() => {
+                try {
+                  return new URL(evaluation.url).hostname;
+                } catch {
+                  return evaluation.url || 'Unknown URL';
+                }
+              })()}
               <ExternalLink className="w-3 h-3 flex-shrink-0" />
             </a>
           </div>
@@ -145,7 +154,13 @@ function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {new Date(evaluation.timestamp).toLocaleDateString()}
+              {(() => {
+                try {
+                  return new Date(evaluation.timestamp).toLocaleDateString();
+                } catch {
+                  return 'N/A';
+                }
+              })()}
             </span>
           </div>
         </div>
@@ -154,12 +169,12 @@ function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="text-center">
             <div className={cn("text-2xl font-bold", scoreColor)}>
-              {evaluation.buyingIntentProbability}%
+              {buyingIntent}%
             </div>
             <div className="text-xs text-neutral-500 dark:text-neutral-500">Intent</div>
           </div>
 
-          <AnchorBadge anchor={evaluation.purchaseIntentAnchor} size="sm" />
+          <AnchorBadge anchor={evaluation.purchaseIntentAnchor} />
         </div>
       </div>
 
