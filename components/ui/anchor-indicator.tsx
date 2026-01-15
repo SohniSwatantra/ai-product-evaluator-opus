@@ -40,7 +40,9 @@ export function AnchorIndicator({ anchor, probability, className, showLabel = tr
     }
   };
 
-  const { icon: Icon, color, bgColor, borderColor, label, description, emoji } = config[anchor];
+  // Safely handle invalid or missing anchor values by defaulting to "middle"
+  const safeAnchor = anchor && config[anchor] ? anchor : "middle";
+  const { icon: Icon, color, bgColor, borderColor, label, description, emoji } = config[safeAnchor];
 
   return (
     <div className={cn("flex items-center gap-4", className)}>
@@ -93,7 +95,9 @@ export function AnchorBadge({ anchor, className }: { anchor: PurchaseIntentAncho
     }
   };
 
-  const { color, bgColor, label, emoji } = config[anchor];
+  // Safely handle invalid or missing anchor values by defaulting to "middle"
+  const safeAnchor = anchor && config[anchor] ? anchor : "middle";
+  const { color, bgColor, label, emoji } = config[safeAnchor];
 
   return (
     <span className={cn(

@@ -8,13 +8,27 @@ interface SSRDistributionChartProps {
 }
 
 export function SSRDistributionChart({ distribution }: SSRDistributionChartProps) {
+  // Return null if distribution is invalid
+  if (!distribution) {
+    return null;
+  }
+
+  // Safely access distribution values with defaults
+  const safeDistribution = {
+    rating1: typeof distribution.rating1 === "number" ? distribution.rating1 : 0,
+    rating2: typeof distribution.rating2 === "number" ? distribution.rating2 : 0,
+    rating3: typeof distribution.rating3 === "number" ? distribution.rating3 : 0,
+    rating4: typeof distribution.rating4 === "number" ? distribution.rating4 : 0,
+    rating5: typeof distribution.rating5 === "number" ? distribution.rating5 : 0,
+  };
+
   // Transform distribution data for recharts
   const chartData = [
-    { rating: "1 - Very Unlikely", value: distribution.rating1 * 100, rawValue: distribution.rating1 },
-    { rating: "2 - Unlikely", value: distribution.rating2 * 100, rawValue: distribution.rating2 },
-    { rating: "3 - Uncertain", value: distribution.rating3 * 100, rawValue: distribution.rating3 },
-    { rating: "4 - Likely", value: distribution.rating4 * 100, rawValue: distribution.rating4 },
-    { rating: "5 - Very Likely", value: distribution.rating5 * 100, rawValue: distribution.rating5 },
+    { rating: "1 - Very Unlikely", value: safeDistribution.rating1 * 100, rawValue: safeDistribution.rating1 },
+    { rating: "2 - Unlikely", value: safeDistribution.rating2 * 100, rawValue: safeDistribution.rating2 },
+    { rating: "3 - Uncertain", value: safeDistribution.rating3 * 100, rawValue: safeDistribution.rating3 },
+    { rating: "4 - Likely", value: safeDistribution.rating4 * 100, rawValue: safeDistribution.rating4 },
+    { rating: "5 - Very Likely", value: safeDistribution.rating5 * 100, rawValue: safeDistribution.rating5 },
   ];
 
   // Color gradient from red to green
