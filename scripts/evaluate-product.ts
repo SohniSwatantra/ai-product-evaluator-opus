@@ -21,6 +21,7 @@ import { calculateSSR, compareMethodologies, getAnchorFromSSRScore } from "../li
 import { createAXEvaluationPrompt, parseAgentExperience } from "../lib/ax-evaluator";
 import { scrapeWebsite, extractProductInfo } from "../lib/web-scraper";
 import { saveEvaluation, deductUserCredits } from "../lib/db";
+import { validateAndNormalizeEvaluation } from "../lib/evaluation-validator";
 import type { Demographics, ProductEvaluation, SectionRecommendation } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -153,35 +154,39 @@ function cleanAndParseJSON(text: string): ProductEvaluation {
   }
 
   let jsonStr = jsonMatch[0];
+  let parsed: any;
 
   try {
-    return JSON.parse(jsonStr);
+    parsed = JSON.parse(jsonStr);
   } catch (err) {
     console.warn("⚠️ Initial JSON parse failed, attempting cleanup", err);
+
+    try {
+      jsonStr = jsonStr
+        .replace(/,(\s*[}\]])/g, "$1")
+        .replace(/\n/g, " ")
+        .replace(/\r/g, "")
+        .replace(/\t/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3')
+        .replace(/'/g, '"')
+        .replace(/:\s*([a-zA-Z][a-zA-Z0-9\s-]*?)(\s*[,}])/g, (match, value, ending) => {
+          const trimmed = value.trim();
+          if (["true", "false", "null"].includes(trimmed) || /^\d+(\.\d+)?$/.test(trimmed)) {
+            return match;
+          }
+          return `: "${trimmed}"${ending}`;
+        });
+
+      parsed = JSON.parse(jsonStr);
+    } catch (error) {
+      console.error("❌ Failed to parse evaluation JSON", error);
+      throw new Error("Claude returned malformed JSON");
+    }
   }
 
-  try {
-    jsonStr = jsonStr
-      .replace(/,(\s*[}\]])/g, "$1")
-      .replace(/\n/g, " ")
-      .replace(/\r/g, "")
-      .replace(/\t/g, " ")
-      .replace(/\s+/g, " ")
-      .replace(/([{,]\s*)([a-zA-Z0-9_]+)(\s*:)/g, '$1"$2"$3')
-      .replace(/'/g, '"')
-      .replace(/:\s*([a-zA-Z][a-zA-Z0-9\s-]*?)(\s*[,}])/g, (match, value, ending) => {
-        const trimmed = value.trim();
-        if (["true", "false", "null"].includes(trimmed) || /^\d+(\.\d+)?$/.test(trimmed)) {
-          return match;
-        }
-        return `: "${trimmed}"${ending}`;
-      });
-
-    return JSON.parse(jsonStr);
-  } catch (error) {
-    console.error("❌ Failed to parse evaluation JSON", error);
-    throw new Error("Claude returned malformed JSON");
-  }
+  // Validate and provide defaults for required fields to handle model output variations
+  return validateAndNormalizeEvaluation(parsed);
 }
 
 function buildDemographicDescription(demographics: Demographics): string {

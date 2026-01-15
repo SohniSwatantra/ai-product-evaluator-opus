@@ -390,6 +390,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       )}
 
       {/* Evaluation Factors */}
+      {normalizedEvaluation.factors && normalizedEvaluation.factors.length > 0 && (
       <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
         <h3 className="text-2xl font-semibold mb-6 text-black dark:text-white">Evaluation Factors</h3>
 
@@ -406,6 +407,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
           ))}
         </div>
       </div>
+      )}
 
       {/* AI Analysis */}
       <div className="p-4 sm:p-8 rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-black/80 backdrop-blur-sm">
@@ -462,7 +464,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
                 </div>
               )}
 
-              {normalizedEvaluation.websiteSnapshot.keyFeatures.length > 0 && (
+              {normalizedEvaluation.websiteSnapshot.keyFeatures && normalizedEvaluation.websiteSnapshot.keyFeatures.length > 0 && (
                 <div>
                   <h4 className="text-sm font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Key Features</h4>
                   <ul className="space-y-1">
@@ -486,6 +488,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       ) : null}
 
       {/* Legacy Recommendations - Fallback or Additional */}
+      {normalizedEvaluation.recommendations && normalizedEvaluation.recommendations.length > 0 && (
       <div className="p-4 sm:p-8 rounded-2xl border-2 border-black/20 dark:border-white/20 bg-black/5 dark:bg-white/5 backdrop-blur-sm">
         <h3 className="text-2xl font-semibold mb-2 text-black dark:text-white">
           {normalizedEvaluation.sectionedRecommendations && normalizedEvaluation.sectionedRecommendations.length > 0 ? "Additional Recommendations" : "Recommendations"}
@@ -501,6 +504,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
           ))}
         </ul>
       </div>
+      )}
 
       {/* Divider */}
       <div className="border-t border-black/10 dark:border-white/10 my-8"></div>
