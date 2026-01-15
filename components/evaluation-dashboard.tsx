@@ -37,8 +37,12 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
     }
   };
 
-  const scoreColor = normalizedEvaluation.overallScore >= 70 ? "text-green-600 dark:text-green-400" : normalizedEvaluation.overallScore >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
-  const probabilityColor = normalizedEvaluation.buyingIntentProbability >= 70 ? "text-green-600 dark:text-green-400" : normalizedEvaluation.buyingIntentProbability >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
+  // Safely handle scores with defaults
+  const overallScore = typeof normalizedEvaluation.overallScore === 'number' ? normalizedEvaluation.overallScore : 0;
+  const buyingIntentProb = typeof normalizedEvaluation.buyingIntentProbability === 'number' ? normalizedEvaluation.buyingIntentProbability : 0;
+
+  const scoreColor = overallScore >= 70 ? "text-green-600 dark:text-green-400" : overallScore >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
+  const probabilityColor = buyingIntentProb >= 70 ? "text-green-600 dark:text-green-400" : buyingIntentProb >= 40 ? "text-yellow-600 dark:text-yellow-400" : "text-red-600 dark:text-red-400";
 
   return (
     <>
@@ -53,7 +57,13 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
           <span>Analyze Another Product</span>
         </button>
         <div className="text-sm text-neutral-600 dark:text-neutral-400">
-          {new Date(normalizedEvaluation.timestamp).toLocaleString()}
+          {(() => {
+            try {
+              return new Date(normalizedEvaluation.timestamp).toLocaleString();
+            } catch {
+              return 'N/A';
+            }
+          })()}
         </div>
       </div>
 
@@ -124,7 +134,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-600 dark:text-neutral-400">Region:</span>
-              <span className="font-semibold text-black dark:text-white capitalize">{normalizedEvaluation.targetDemographics.region.replace('-', ' ')}</span>
+              <span className="font-semibold text-black dark:text-white capitalize">{(normalizedEvaluation.targetDemographics.region || 'N/A').replace('-', ' ')}</span>
             </div>
             {normalizedEvaluation.targetDemographics.ethnicity && (
               <div className="flex justify-between">
@@ -166,7 +176,7 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
         </div>
         <AnchorIndicator
           anchor={normalizedEvaluation.purchaseIntentAnchor}
-          probability={normalizedEvaluation.buyingIntentProbability}
+          probability={buyingIntentProb}
           className="mt-4"
         />
         <p className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
@@ -184,13 +194,13 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
             <h3 className="text-lg font-semibold text-neutral-600 dark:text-neutral-400 mb-2">Overall Score</h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-500 mb-4">Factor-based analysis</p>
             <div className={cn("text-4xl sm:text-6xl font-bold mb-2", scoreColor)}>
-              {normalizedEvaluation.overallScore}
+              {overallScore}
               <span className="text-2xl">/100</span>
             </div>
             <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
               <div
                 className={cn("h-full transition-all", scoreColor.replace("text-", "bg-"))}
-                style={{ width: `${normalizedEvaluation.overallScore}%` }}
+                style={{ width: `${overallScore}%` }}
               />
             </div>
           </div>
@@ -206,13 +216,13 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
               {normalizedEvaluation.ssrScore ? "SSR methodology - 90% human correlation" : "Factor-based estimate"}
             </p>
             <div className={cn("text-4xl sm:text-6xl font-bold mb-2", probabilityColor)}>
-              {normalizedEvaluation.buyingIntentProbability}
+              {buyingIntentProb}
               <span className="text-2xl">%</span>
             </div>
             <div className="w-full h-3 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
               <div
                 className={cn("h-full transition-all", probabilityColor.replace("text-", "bg-"))}
-                style={{ width: `${normalizedEvaluation.buyingIntentProbability}%` }}
+                style={{ width: `${buyingIntentProb}%` }}
               />
             </div>
             {normalizedEvaluation.ssrConfidence && (
@@ -451,7 +461,13 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
                 />
               </div>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2 text-center">
-                Captured at {new Date(normalizedEvaluation.timestamp).toLocaleString()}
+                Captured at {(() => {
+                  try {
+                    return new Date(normalizedEvaluation.timestamp).toLocaleString();
+                  } catch {
+                    return 'N/A';
+                  }
+                })()}
               </p>
             </div>
 
