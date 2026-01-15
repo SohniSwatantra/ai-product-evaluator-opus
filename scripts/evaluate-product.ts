@@ -447,7 +447,7 @@ ${scrapedDataAppendix}
   await sql`
     UPDATE evaluation_jobs
     SET status = 'completed',
-        result = ${evaluation},
+        result = ${JSON.stringify(evaluation)},
         completed_at = NOW(),
         updated_at = NOW()
     WHERE id = ${JOB_ID}
