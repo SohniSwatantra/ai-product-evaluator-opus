@@ -408,7 +408,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       </div>
 
       {/* Factor Breakdown */}
-      {factors && factors.length > 0 && (
+      {factors && Array.isArray(factors) && factors.length > 0 && (
         <div className="mb-8">
           <h4 className="text-lg font-semibold text-black dark:text-white mb-4">
             7-Factor Agent Experience Analysis

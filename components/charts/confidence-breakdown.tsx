@@ -8,17 +8,21 @@ interface ConfidenceBreakdownProps {
 }
 
 export function ConfidenceBreakdown({ ssrConfidence, ssrMarginConfidence }: ConfidenceBreakdownProps) {
+  // Safely handle missing or invalid numbers
+  const safeConfidence = typeof ssrConfidence === "number" ? ssrConfidence : 0;
+  const safeMarginConfidence = typeof ssrMarginConfidence === "number" ? ssrMarginConfidence : 0;
+
   // Calculate entropy confidence from the combined confidence
   // Since ssrConfidence = (entropy + margin) / 2, we can derive:
-  const marginConfidence = ssrMarginConfidence ?? 0;
-  const entropyConfidence = ssrConfidence * 2 - marginConfidence;
+  const marginConfidence = safeMarginConfidence;
+  const entropyConfidence = safeConfidence * 2 - marginConfidence;
 
   const chartData = [
     {
       name: "Confidence Metrics",
       entropy: Math.max(0, entropyConfidence),
       margin: marginConfidence,
-      combined: ssrConfidence,
+      combined: safeConfidence,
     },
   ];
 
