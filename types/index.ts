@@ -53,15 +53,6 @@ export interface AgentExperience {
   recommendations: string[];
 }
 
-export interface SectionScreenshots {
-  hero?: string;
-  pricing?: string;
-  socialProof?: string;
-  trustSignals?: string;
-  marketing?: string;
-  features?: string;
-}
-
 export interface SectionRecommendation {
   section: string; // "Pricing", "Social Proof", "Trust Signals", etc.
   screenshotPath?: string;
@@ -76,7 +67,6 @@ export interface WebsiteSnapshot {
   screenshotPath: string;
   heroScreenshotPath?: string; // Optional for backward compatibility with old evaluations
   heroScreenshotBase64?: string; // Optional base64 fallback for reliable rendering
-  sectionScreenshots?: SectionScreenshots; // Section-specific screenshots
   productName: string;
   price: string;
   rating: string;

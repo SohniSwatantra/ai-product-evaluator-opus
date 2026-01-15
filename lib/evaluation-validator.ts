@@ -58,7 +58,6 @@ export function validateAndNormalizeEvaluation(parsed: any): ProductEvaluation {
     screenshotPath: parsed.websiteSnapshot.screenshotPath || "",
     heroScreenshotPath: parsed.websiteSnapshot.heroScreenshotPath,
     heroScreenshotBase64: parsed.websiteSnapshot.heroScreenshotBase64,
-    sectionScreenshots: parsed.websiteSnapshot.sectionScreenshots,
     productName: parsed.websiteSnapshot.productName || "Unknown Product",
     price: parsed.websiteSnapshot.price || "Price not available",
     rating: parsed.websiteSnapshot.rating || "No rating",
