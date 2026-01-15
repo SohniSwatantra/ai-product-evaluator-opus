@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket, Users, Tag } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket, Users, Tag, Calendar } from "lucide-react";
 import { useUser } from "@stackframe/stack";
 import { cn } from "@/lib/utils";
 import { useCreditBalance } from "@/components/credits/credit-balance";
@@ -12,17 +12,17 @@ import { useCreditBalance } from "@/components/credits/credit-balance";
 const CREDIT_PACKS = [
   {
     id: "starter",
-    name: "Solo",
-    credits: 500,
-    price: "€1,499",
-    originalPrice: "€1,799",
+    name: "Solo Business",
+    credits: 210,
+    price: "€299",
+    originalPrice: "€399",
     description: "Perfect for trying out",
     icon: Sparkles,
     popular: false,
     color: "blue",
     earlyAccess: true,
     features: [
-      "30 model evaluation runs",
+      "15 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -31,16 +31,16 @@ const CREDIT_PACKS = [
   {
     id: "pro",
     name: "Business Pro",
-    credits: 1000,
-    price: "€1,999",
-    originalPrice: "€2,499",
+    credits: 600,
+    price: "€699",
+    originalPrice: "€999",
     description: "Best value for regular business",
     icon: Zap,
     popular: true,
     color: "purple",
     earlyAccess: true,
     features: [
-      "60 model evaluation runs",
+      "30 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -50,16 +50,16 @@ const CREDIT_PACKS = [
   {
     id: "agency",
     name: "Large Business",
-    credits: 2000,
-    price: "€2,999",
-    originalPrice: "€3,999",
+    credits: 1500,
+    price: "€1,499",
+    originalPrice: "€2,999",
     description: "For Large Business Teams",
     icon: Building2,
     popular: false,
     color: "amber",
     earlyAccess: true,
     features: [
-      "200 model evaluation runs",
+      "100 model evaluation runs",
       "Full AI-powered reports",
       "AX Council aggregation",
       "7-factor analysis",
@@ -213,6 +213,35 @@ export default function PricingPage() {
       <Navbar />
       <main className="container mx-auto px-6 pt-32 pb-20">
         <div className="max-w-5xl mx-auto">
+          {/* Horecava 2026 Special Offer Banner */}
+          <div className="mb-8 p-6 rounded-2xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-red-500/20 border-2 border-amber-500/50 overflow-hidden">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="relative w-full md:w-48 h-32 md:h-32 flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center bg-white/10">
+                <img
+                  src="/images/horecava-2026.png"
+                  alt="Horecava 2026 Amsterdam"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/30 text-amber-300 text-sm mb-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>HORECAVA 2026 Special</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                  Exclusive Event Pricing
+                </h2>
+                <p className="text-amber-200 mb-2">
+                  Special pricing available until <span className="font-bold text-amber-300">15th January 2026</span>
+                </p>
+                <p className="text-amber-300 font-semibold flex items-center justify-center md:justify-start gap-2">
+                  <Ticket className="w-5 h-5" />
+                  Ask sales team for Discount Voucher
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Free Credits Banner */}
           <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 flex items-center justify-center gap-3">
             <Gift className="w-6 h-6 text-green-400" />
@@ -494,8 +523,8 @@ export default function PricingPage() {
                       {pack.credits} credits
                     </p>
                     {pack.earlyAccess && (
-                      <p className="text-xs text-green-400 mt-1 font-medium">
-                        Early Access Deal (Limited to 10)
+                      <p className="text-xs text-amber-400 mt-1 font-medium">
+                        HORECAVA 2026 Offer - Valid till 15th Jan 2026
                       </p>
                     )}
                   </div>
