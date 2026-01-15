@@ -139,11 +139,11 @@ function SectionCard({ section }: SectionCardProps) {
               <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                 <span className="flex items-center gap-1">
                   <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {section.issues.length} issues
+                  {section.issues?.length || 0} issues
                 </span>
                 <span className="flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {section.recommendations.length} recs
+                  {section.recommendations?.length || 0} recs
                 </span>
               </div>
             </div>
@@ -165,6 +165,7 @@ function SectionCard({ section }: SectionCardProps) {
         <div className="border-t border-neutral-200 dark:border-neutral-800">
           <div className="p-3 sm:p-5 space-y-4 sm:space-y-5">
             {/* Issues Found */}
+            {section.issues && section.issues.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 <AlertCircle className={cn("w-4 h-4", scoreColors.icon)} />
@@ -179,8 +180,10 @@ function SectionCard({ section }: SectionCardProps) {
                 ))}
               </ul>
             </div>
+            )}
 
             {/* Recommendations */}
+            {section.recommendations && section.recommendations.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300">
                 <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
@@ -197,6 +200,7 @@ function SectionCard({ section }: SectionCardProps) {
                 ))}
               </ul>
             </div>
+            )}
           </div>
         </div>
       )}
