@@ -367,7 +367,12 @@ export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = fa
       )}
 
       {/* Anchor Similarity Analysis - NEW! */}
-      {normalizedEvaluation.ssrDistribution && (
+      {normalizedEvaluation.ssrDistribution &&
+       typeof normalizedEvaluation.ssrDistribution.rating1 === 'number' &&
+       typeof normalizedEvaluation.ssrDistribution.rating2 === 'number' &&
+       typeof normalizedEvaluation.ssrDistribution.rating3 === 'number' &&
+       typeof normalizedEvaluation.ssrDistribution.rating4 === 'number' &&
+       typeof normalizedEvaluation.ssrDistribution.rating5 === 'number' && (
         <div className="p-4 sm:p-8 rounded-2xl border-2 border-cyan-200 dark:border-cyan-800 bg-cyan-50/50 dark:bg-cyan-900/20 backdrop-blur-sm">
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />

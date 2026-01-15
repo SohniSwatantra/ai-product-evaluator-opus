@@ -48,7 +48,17 @@ export async function GET(
 
     // If completed, include the result
     if (job.status === "completed" && job.result) {
-      response.result = job.result;
+      // Parse the result if it's a string (JSONB sometimes returns stringified JSON)
+      let parsedResult = job.result;
+      if (typeof job.result === "string") {
+        try {
+          parsedResult = JSON.parse(job.result);
+        } catch (parseError) {
+          console.error("Failed to parse job result:", parseError);
+          // Keep the original result if parsing fails
+        }
+      }
+      response.result = parsedResult;
       response.completedAt = job.completed_at;
     }
 
