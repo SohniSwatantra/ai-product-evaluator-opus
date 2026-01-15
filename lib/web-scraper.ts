@@ -206,13 +206,14 @@ async function detectSectionsWithVision(
     const originalWidth = metadata.width || viewportWidth;
     const originalHeight = metadata.height || viewportHeight;
 
-    // Resize if exceeds Vision API limits (8000px max dimension)
+    // Resize if exceeds Vision API limits (8000px max dimension OR 5MB file size)
     const MAX_DIMENSION = 8000;
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB limit for Claude API
     let processedBuffer = screenshotBuffer;
     let scaleFactor = 1;
 
+    // First check if we need to resize for dimension limits
     if (originalWidth > MAX_DIMENSION || originalHeight > MAX_DIMENSION) {
-      // Calculate scale to fit within limits
       scaleFactor = Math.min(MAX_DIMENSION / originalWidth, MAX_DIMENSION / originalHeight);
       const newWidth = Math.floor(originalWidth * scaleFactor);
       const newHeight = Math.floor(originalHeight * scaleFactor);
@@ -225,8 +226,35 @@ async function detectSectionsWithVision(
         .toBuffer();
     }
 
+    // Then check if we need to compress further for file size limits
+    if (processedBuffer.length > MAX_FILE_SIZE) {
+      console.log(`  📐 Image size ${(processedBuffer.length / 1024 / 1024).toFixed(2)}MB exceeds 5MB limit, compressing...`);
+
+      // Get current dimensions
+      const currentMetadata = await sharp(processedBuffer).metadata();
+      const currentWidth = currentMetadata.width || originalWidth;
+      const currentHeight = currentMetadata.height || originalHeight;
+
+      // Calculate how much we need to reduce (with 10% safety margin)
+      const sizeRatio = Math.sqrt((MAX_FILE_SIZE * 0.9) / processedBuffer.length);
+      const compressionScale = Math.min(sizeRatio, 1);
+      scaleFactor = scaleFactor * compressionScale;
+
+      const newWidth = Math.floor(currentWidth * compressionScale);
+      const newHeight = Math.floor(currentHeight * compressionScale);
+
+      console.log(`  📐 Compressing to ${newWidth}x${newHeight} (compression scale: ${compressionScale.toFixed(2)}, total scale: ${scaleFactor.toFixed(2)})`);
+
+      processedBuffer = await sharp(processedBuffer)
+        .resize(newWidth, newHeight, { fit: 'inside' })
+        .png({ compressionLevel: 9, quality: 80 })
+        .toBuffer();
+
+      console.log(`  📐 Compressed image size: ${(processedBuffer.length / 1024 / 1024).toFixed(2)}MB`);
+    }
+
     const response = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251101",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 2000,
       messages: [
         {
