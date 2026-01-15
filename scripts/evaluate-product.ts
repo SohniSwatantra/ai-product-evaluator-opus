@@ -400,7 +400,6 @@ ${scrapedDataAppendix}
       screenshotPath: scrapedData.screenshotPath,
       heroScreenshotPath: scrapedData.heroScreenshotPath,
       heroScreenshotBase64: scrapedData.heroScreenshotBase64, // Save base64 for reliable frontend rendering
-      sectionScreenshots: scrapedData.sectionScreenshots,
       productName: productInfo.productName,
       price: productInfo.price,
       rating: productInfo.rating,
@@ -601,7 +600,7 @@ async function enrichWithSectionRecommendations(
   productInfo: ReturnType<typeof extractProductInfo>
 ) {
   try {
-    if (scrapedData.error || !scrapedData.sectionScreenshots) {
+    if (scrapedData.error) {
       return;
     }
 
@@ -636,9 +635,6 @@ Return an array of section recommendations. Each section should include:
 - issues: Array of 2-4 specific problems found in this section
 - recommendations: Array of 2-4 actionable improvements for this section
 - impact: Priority level ("high", "medium", or "low")
-
-**CRITICAL - SECTION NAMING:**
-⚠️ The "section" field MUST use the EXACT names listed above. Do not use variations or abbreviations. This is required for screenshot mapping.
 
 **IMPORTANT GUIDELINES:**
 - Be specific and actionable (not generic advice)
@@ -696,24 +692,10 @@ Provide 4-6 section recommendations focusing on the most impactful improvements 
 
     const sectionedRecommendations: SectionRecommendation[] = JSON.parse(sectionJsonMatch[0]);
 
-    const sectionNameMapping: Record<string, keyof NonNullable<typeof scrapedData.sectionScreenshots>> = {
-      Pricing: "pricing",
-      "Social Proof": "socialProof",
-      "Trust Signals": "trustSignals",
-      "Marketing Elements": "marketing",
-      Features: "features",
-      "Hero Section": "hero",
-    };
-
+    // Use hero screenshot as fallback for all sections
     for (const section of sectionedRecommendations) {
-      const key = sectionNameMapping[section.section];
-      if (key && scrapedData.sectionScreenshots?.[key]) {
-        section.screenshotPath = scrapedData.sectionScreenshots[key];
-        section.isFallbackScreenshot = false;
-      } else {
-        section.screenshotPath = scrapedData.heroScreenshotPath || scrapedData.screenshotPath;
-        section.isFallbackScreenshot = true;
-      }
+      section.screenshotPath = scrapedData.heroScreenshotPath || scrapedData.screenshotPath;
+      section.isFallbackScreenshot = true;
     }
 
     evaluation.sectionedRecommendations = sectionedRecommendations;
@@ -746,24 +728,8 @@ async function pushScreenshotsToR2(
       localPath: local,
       assign: (url) => {
         evaluation.websiteSnapshot!.heroScreenshotPath = url;
-        if (scrapedData.sectionScreenshots?.hero) {
-          scrapedData.sectionScreenshots.hero = url;
-        }
       },
     });
-  }
-
-  if (evaluation.websiteSnapshot?.sectionScreenshots) {
-    for (const [section, localPath] of Object.entries(evaluation.websiteSnapshot.sectionScreenshots)) {
-      if (!localPath) continue;
-      screenshotUploads.push({
-        localPath,
-        assign: (url) => {
-          evaluation.websiteSnapshot!.sectionScreenshots![section as keyof typeof evaluation.websiteSnapshot.sectionScreenshots] =
-            url;
-        },
-      });
-    }
   }
 
   if (evaluation.sectionedRecommendations) {
