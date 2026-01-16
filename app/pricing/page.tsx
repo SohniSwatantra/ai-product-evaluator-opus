@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket, Users, Tag } from "lucide-react";
+import { Check, Loader2, Sparkles, Zap, Building2, CheckCircle, XCircle, Coins, ArrowRight, Gift, Ticket, Users, Tag, Percent } from "lucide-react";
 import { useUser } from "@stackframe/stack";
 import { cn } from "@/lib/utils";
 import { useCreditBalance } from "@/components/credits/credit-balance";
@@ -91,6 +91,17 @@ export default function PricingPage() {
   } | null>(null);
   const [referralMessage, setReferralMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Discount code state
+  const [discountCode, setDiscountCode] = useState("");
+  const [validatingDiscount, setValidatingDiscount] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    code: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+    description?: string;
+  } | null>(null);
+  const [discountMessage, setDiscountMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const success = searchParams.get("success") === "true";
   const canceled = searchParams.get("canceled") === "true";
 
@@ -174,6 +185,55 @@ export default function PricingPage() {
     setReferralMessage(null);
   };
 
+  const handleApplyDiscount = async () => {
+    if (!discountCode.trim()) {
+      setDiscountMessage({ type: 'error', text: 'Please enter a discount code' });
+      return;
+    }
+
+    try {
+      setValidatingDiscount(true);
+      setDiscountMessage(null);
+
+      const response = await fetch('/api/discount/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCode.trim() })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setAppliedDiscount({
+          code: data.discount.code,
+          discount_type: data.discount.discount_type,
+          discount_value: data.discount.discount_value,
+          description: data.discount.description,
+        });
+        const discountText = data.discount.discount_type === 'percentage'
+          ? `${data.discount.discount_value}% discount applied!`
+          : `€${data.discount.discount_value} discount applied!`;
+        setDiscountMessage({ type: 'success', text: discountText });
+        setDiscountCode("");
+        // Clear referral if discount applied (they don't stack)
+        if (appliedReferral) {
+          setAppliedReferral(null);
+          setReferralMessage(null);
+        }
+      } else {
+        setDiscountMessage({ type: 'error', text: data.error || 'Invalid discount code' });
+      }
+    } catch (err: any) {
+      setDiscountMessage({ type: 'error', text: err.message || 'Failed to validate discount code' });
+    } finally {
+      setValidatingDiscount(false);
+    }
+  };
+
+  const handleRemoveDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountMessage(null);
+  };
+
   const handlePurchase = async (packId: string) => {
     if (!user) {
       // Redirect to sign in
@@ -190,7 +250,8 @@ export default function PricingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           packId,
-          referralCode: appliedReferral?.code || null
+          referralCode: appliedReferral?.code || null,
+          discountCode: !appliedReferral ? appliedDiscount?.code : null // Only send discount if no referral
         }),
       });
 
@@ -409,6 +470,78 @@ export default function PricingPage() {
           </div>
           )}
 
+          {/* Discount Code Section - Only for signed-in users */}
+          {user && (
+          <div className="mb-8 p-6 rounded-2xl border border-amber-500/30 bg-amber-500/10">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-amber-500/20">
+                  <Percent className="w-6 h-6 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">Have a Discount Code?</h3>
+                  <p className="text-sm text-neutral-400">Apply a discount code to save on your purchase</p>
+                </div>
+              </div>
+              <div className="flex-1 w-full md:w-auto">
+                {appliedDiscount ? (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-500/20 border border-green-500/30">
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                    <div className="flex-1">
+                      <p className="text-green-300 font-medium">
+                        {appliedDiscount.discount_type === 'percentage'
+                          ? `${appliedDiscount.discount_value}% discount applied!`
+                          : `€${appliedDiscount.discount_value} discount applied!`}
+                      </p>
+                      <p className="text-sm text-green-400/70">
+                        Code: {appliedDiscount.code}
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleRemoveDiscount}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyDiscount()}
+                        placeholder="Enter discount code (e.g., SAVE-XXXXXX)"
+                        className="flex-1 px-4 py-3 rounded-lg bg-neutral-900 border border-white/10 text-white placeholder-neutral-500 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                      <button
+                        onClick={handleApplyDiscount}
+                        disabled={validatingDiscount}
+                        className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {validatingDiscount ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          "Apply"
+                        )}
+                      </button>
+                    </div>
+                    {discountMessage && (
+                      <p className={cn(
+                        "text-sm mt-2",
+                        discountMessage.type === 'success' ? "text-green-400" : "text-red-400"
+                      )}>
+                        {discountMessage.text}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          )}
+
           {/* Error Message */}
           {error && (
             <div className="mb-8 p-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300">
@@ -476,6 +609,26 @@ export default function PricingPage() {
                         </div>
                         <p className="text-green-400 text-sm mt-1">
                           {appliedReferral.discount_percent}% off with code: {appliedReferral.code}
+                        </p>
+                      </>
+                    ) : appliedDiscount ? (
+                      <>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-5xl font-bold text-green-400">
+                            €{appliedDiscount.discount_type === 'percentage'
+                              ? Math.round(parseInt(pack.price.replace('€', '').replace(',', '')) * (1 - appliedDiscount.discount_value / 100)).toLocaleString()
+                              : Math.max(0, parseInt(pack.price.replace('€', '').replace(',', '')) - appliedDiscount.discount_value).toLocaleString()
+                            }
+                          </span>
+                          <span className="text-2xl text-neutral-500 line-through">
+                            {pack.price}
+                          </span>
+                        </div>
+                        <p className="text-green-400 text-sm mt-1">
+                          {appliedDiscount.discount_type === 'percentage'
+                            ? `${appliedDiscount.discount_value}% off`
+                            : `€${appliedDiscount.discount_value} off`
+                          } with code: {appliedDiscount.code}
                         </p>
                       </>
                     ) : (
