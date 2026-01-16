@@ -2071,3 +2071,375 @@ export async function getReferralStats(): Promise<{
     throw error;
   }
 }
+
+// ============================================
+// Discount Code System Functions
+// ============================================
+
+export interface DiscountCode {
+  id: number;
+  code: string;
+  description: string | null;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_purchase_amount: number | null;
+  max_uses: number | null;
+  current_uses: number;
+  total_discount_given: number;
+  is_active: boolean;
+  expires_at: Date | null;
+  created_at: Date;
+}
+
+export interface DiscountUsage {
+  id: number;
+  discount_code_id: number;
+  user_id: string | null;
+  stripe_session_id: string;
+  original_amount: number;
+  discount_amount: number;
+  final_amount: number;
+  created_at: Date;
+}
+
+/**
+ * Initialize discount code tables
+ */
+export async function initDiscountTables() {
+  try {
+    // Create discount_codes table
+    await sql`
+      CREATE TABLE IF NOT EXISTS discount_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        description TEXT,
+        discount_type VARCHAR(20) NOT NULL DEFAULT 'percentage',
+        discount_value DECIMAL(10,2) NOT NULL,
+        min_purchase_amount DECIMAL(10,2),
+        max_uses INTEGER,
+        current_uses INTEGER DEFAULT 0,
+        total_discount_given DECIMAL(10,2) DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+
+    // Create discount_usages table
+    await sql`
+      CREATE TABLE IF NOT EXISTS discount_usages (
+        id SERIAL PRIMARY KEY,
+        discount_code_id INTEGER REFERENCES discount_codes(id) ON DELETE CASCADE,
+        user_id VARCHAR(255),
+        stripe_session_id VARCHAR(255),
+        original_amount DECIMAL(10,2),
+        discount_amount DECIMAL(10,2),
+        final_amount DECIMAL(10,2),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(discount_code_id, stripe_session_id)
+      )
+    `;
+
+    // Create indices
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON discount_codes(code)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_discount_codes_active ON discount_codes(is_active)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_discount_usages_code_id ON discount_usages(discount_code_id)
+    `;
+
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_discount_usages_stripe_session ON discount_usages(stripe_session_id)
+    `;
+
+    console.log("Discount tables initialized successfully");
+  } catch (error) {
+    console.error("Error initializing discount tables:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate a random discount code
+ */
+export function generateDiscountCode(prefix: string = "SAVE"): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = prefix + "-";
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+/**
+ * Create a new discount code (admin only)
+ */
+export async function createDiscountCode(
+  discountType: 'percentage' | 'fixed',
+  discountValue: number,
+  description: string | null = null,
+  minPurchaseAmount: number | null = null,
+  maxUses: number | null = null,
+  expiresAt: Date | null = null,
+  customCode?: string
+): Promise<DiscountCode> {
+  try {
+    const code = customCode || generateDiscountCode();
+
+    const result = await sql`
+      INSERT INTO discount_codes (code, description, discount_type, discount_value, min_purchase_amount, max_uses, expires_at)
+      VALUES (${code}, ${description}, ${discountType}, ${discountValue}, ${minPurchaseAmount}, ${maxUses}, ${expiresAt})
+      RETURNING id, code, description, discount_type, discount_value, min_purchase_amount, max_uses, current_uses, total_discount_given, is_active, expires_at, created_at
+    `;
+
+    console.log(`Created discount code: ${code} (${discountType}: ${discountValue})`);
+    return result[0] as DiscountCode;
+  } catch (error: any) {
+    if (error.code === '23505') {
+      throw new Error("A discount code with this code already exists");
+    }
+    console.error("Error creating discount code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get all discount codes (admin only)
+ */
+export async function getDiscountCodes(): Promise<DiscountCode[]> {
+  try {
+    const results = await sql`
+      SELECT id, code, description, discount_type, discount_value, min_purchase_amount, max_uses, current_uses, total_discount_given, is_active, expires_at, created_at
+      FROM discount_codes
+      ORDER BY created_at DESC
+    `;
+    return results as DiscountCode[];
+  } catch (error) {
+    console.error("Error fetching discount codes:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get a discount code by code string
+ */
+export async function getDiscountCodeByCode(code: string): Promise<DiscountCode | null> {
+  try {
+    const results = await sql`
+      SELECT id, code, description, discount_type, discount_value, min_purchase_amount, max_uses, current_uses, total_discount_given, is_active, expires_at, created_at
+      FROM discount_codes
+      WHERE UPPER(code) = UPPER(${code})
+    `;
+    return results.length > 0 ? results[0] as DiscountCode : null;
+  } catch (error) {
+    console.error("Error fetching discount code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Update a discount code (admin only)
+ */
+export async function updateDiscountCode(
+  id: number,
+  updates: Partial<Pick<DiscountCode, 'description' | 'discount_type' | 'discount_value' | 'min_purchase_amount' | 'max_uses' | 'is_active' | 'expires_at'>>
+): Promise<DiscountCode | null> {
+  try {
+    const result = await sql`
+      UPDATE discount_codes
+      SET
+        description = COALESCE(${updates.description || null}, description),
+        discount_type = COALESCE(${updates.discount_type || null}, discount_type),
+        discount_value = COALESCE(${updates.discount_value ?? null}, discount_value),
+        min_purchase_amount = COALESCE(${updates.min_purchase_amount ?? null}, min_purchase_amount),
+        max_uses = COALESCE(${updates.max_uses ?? null}, max_uses),
+        is_active = COALESCE(${updates.is_active ?? null}, is_active),
+        expires_at = COALESCE(${updates.expires_at || null}, expires_at)
+      WHERE id = ${id}
+      RETURNING id, code, description, discount_type, discount_value, min_purchase_amount, max_uses, current_uses, total_discount_given, is_active, expires_at, created_at
+    `;
+    return result.length > 0 ? result[0] as DiscountCode : null;
+  } catch (error) {
+    console.error("Error updating discount code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Delete a discount code (admin only)
+ */
+export async function deleteDiscountCode(id: number): Promise<boolean> {
+  try {
+    const result = await sql`
+      DELETE FROM discount_codes
+      WHERE id = ${id}
+      RETURNING id
+    `;
+    return result.length > 0;
+  } catch (error) {
+    console.error("Error deleting discount code:", error);
+    throw error;
+  }
+}
+
+/**
+ * Toggle discount code active status (admin only)
+ */
+export async function toggleDiscountCodeActive(id: number, isActive: boolean): Promise<DiscountCode | null> {
+  try {
+    const result = await sql`
+      UPDATE discount_codes
+      SET is_active = ${isActive}
+      WHERE id = ${id}
+      RETURNING id, code, description, discount_type, discount_value, min_purchase_amount, max_uses, current_uses, total_discount_given, is_active, expires_at, created_at
+    `;
+    return result.length > 0 ? result[0] as DiscountCode : null;
+  } catch (error) {
+    console.error("Error toggling discount code active status:", error);
+    throw error;
+  }
+}
+
+/**
+ * Validate a discount code for checkout
+ * Returns the discount code details if valid, throws error if invalid
+ */
+export async function validateDiscountCode(code: string, purchaseAmount?: number): Promise<DiscountCode> {
+  const discount = await getDiscountCodeByCode(code);
+
+  if (!discount) {
+    throw new Error("Invalid discount code");
+  }
+
+  if (!discount.is_active) {
+    throw new Error("This discount code is no longer active");
+  }
+
+  if (discount.expires_at && new Date(discount.expires_at) < new Date()) {
+    throw new Error("This discount code has expired");
+  }
+
+  if (discount.max_uses !== null && discount.current_uses >= discount.max_uses) {
+    throw new Error("This discount code has reached its maximum number of uses");
+  }
+
+  if (purchaseAmount && discount.min_purchase_amount !== null && purchaseAmount < discount.min_purchase_amount) {
+    throw new Error(`Minimum purchase amount of $${discount.min_purchase_amount} required for this discount code`);
+  }
+
+  return discount;
+}
+
+/**
+ * Calculate discount amount
+ */
+export function calculateDiscount(discount: DiscountCode, originalAmount: number): { discountAmount: number; finalAmount: number } {
+  let discountAmount: number;
+
+  if (discount.discount_type === 'percentage') {
+    discountAmount = (originalAmount * discount.discount_value) / 100;
+  } else {
+    discountAmount = Math.min(discount.discount_value, originalAmount);
+  }
+
+  // Round to 2 decimal places
+  discountAmount = Math.round(discountAmount * 100) / 100;
+  const finalAmount = Math.max(0, Math.round((originalAmount - discountAmount) * 100) / 100);
+
+  return { discountAmount, finalAmount };
+}
+
+/**
+ * Record a discount usage after successful payment
+ */
+export async function recordDiscountUsage(
+  discountCodeId: number,
+  userId: string | null,
+  stripeSessionId: string,
+  originalAmount: number,
+  discountAmount: number,
+  finalAmount: number
+): Promise<DiscountUsage> {
+  try {
+    // Insert the usage record
+    const usageResult = await sql`
+      INSERT INTO discount_usages (discount_code_id, user_id, stripe_session_id, original_amount, discount_amount, final_amount)
+      VALUES (${discountCodeId}, ${userId}, ${stripeSessionId}, ${originalAmount}, ${discountAmount}, ${finalAmount})
+      RETURNING id, discount_code_id, user_id, stripe_session_id, original_amount, discount_amount, final_amount, created_at
+    `;
+
+    // Update the discount code stats
+    await sql`
+      UPDATE discount_codes
+      SET
+        current_uses = current_uses + 1,
+        total_discount_given = total_discount_given + ${discountAmount}
+      WHERE id = ${discountCodeId}
+    `;
+
+    console.log(`Recorded discount usage: code_id=${discountCodeId}, discount=$${discountAmount}`);
+    return usageResult[0] as DiscountUsage;
+  } catch (error: any) {
+    if (error.code === '23505') {
+      console.log(`Discount usage already recorded for session ${stripeSessionId}`);
+      throw new Error("Discount usage already recorded for this session");
+    }
+    console.error("Error recording discount usage:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get discount usages for a specific discount code
+ */
+export async function getDiscountUsages(discountCodeId: number): Promise<DiscountUsage[]> {
+  try {
+    const results = await sql`
+      SELECT id, discount_code_id, user_id, stripe_session_id, original_amount, discount_amount, final_amount, created_at
+      FROM discount_usages
+      WHERE discount_code_id = ${discountCodeId}
+      ORDER BY created_at DESC
+    `;
+    return results as DiscountUsage[];
+  } catch (error) {
+    console.error("Error fetching discount usages:", error);
+    throw error;
+  }
+}
+
+/**
+ * Get discount stats (admin only)
+ */
+export async function getDiscountStats(): Promise<{
+  totalCodes: number;
+  activeCodes: number;
+  totalUses: number;
+  totalDiscountGiven: number;
+}> {
+  try {
+    const statsResult = await sql`
+      SELECT
+        COUNT(*) as total_codes,
+        COUNT(CASE WHEN is_active THEN 1 END) as active_codes,
+        SUM(current_uses) as total_uses,
+        SUM(total_discount_given) as total_discount_given
+      FROM discount_codes
+    `;
+
+    const stats = statsResult[0];
+    return {
+      totalCodes: parseInt(stats.total_codes) || 0,
+      activeCodes: parseInt(stats.active_codes) || 0,
+      totalUses: parseInt(stats.total_uses) || 0,
+      totalDiscountGiven: parseFloat(stats.total_discount_given) || 0
+    };
+  } catch (error) {
+    console.error("Error fetching discount stats:", error);
+    throw error;
+  }
+}
