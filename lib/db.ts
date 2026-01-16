@@ -8,6 +8,35 @@ import type { ProductEvaluation, AXModelConfig, AXModelEvaluation, AXCouncilResu
 // Initialize Neon client
 const sql = neon(process.env.DATABASE_URL || "");
 
+// Helper to safely extract demographics values as strings
+function getSafeDemoValue(demographics: any, newKey: string, legacyKey: string, fallback: string): string {
+  if (!demographics || typeof demographics !== 'object') return fallback;
+
+  const value = demographics[newKey] ?? demographics[legacyKey];
+
+  // Ensure the value is a string, not an object or other type
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return fallback;
+}
+
+// Transform legacy demographics format to current format with safe string values
+function normalizeDemographics(demographics: any): {
+  ageRange: string;
+  gender: string;
+  incomeTier: string;
+  region: string;
+  ethnicity?: string;
+} {
+  return {
+    ageRange: getSafeDemoValue(demographics, 'ageRange', 'age', "25-34"),
+    gender: getSafeDemoValue(demographics, 'gender', 'gender', "all"),
+    incomeTier: getSafeDemoValue(demographics, 'incomeTier', 'income', "medium"),
+    region: getSafeDemoValue(demographics, 'region', 'region', "north-america"),
+    ...(typeof demographics?.ethnicity === 'string' && { ethnicity: demographics.ethnicity }),
+  };
+}
+
 /**
  * Initialize database schema
  * Creates the evaluations table if it doesn't exist
@@ -210,18 +239,8 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
     `;
 
     return results.map((row: any) => {
-      // Transform legacy demographics format to current format
-      let demographics = row.target_demographics;
-      if (demographics && (!demographics.ageRange || !demographics.incomeTier)) {
-        // Legacy format detected (missing new fields) - transform to new format
-        demographics = {
-          ageRange: demographics.age || demographics.ageRange || "25-34",
-          gender: demographics.gender || "all",
-          incomeTier: demographics.income || demographics.incomeTier || "medium",
-          region: demographics.region || "north-america",
-          ...(demographics.ethnicity && { ethnicity: demographics.ethnicity }),
-        };
-      }
+      // Transform demographics to ensure safe string values
+      const demographics = normalizeDemographics(row.target_demographics);
 
       const evaluation: ProductEvaluation = {
         id: row.id,
@@ -316,18 +335,8 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
 
     const row = results[0];
 
-    // Transform legacy demographics format to current format
-    let demographics = row.target_demographics;
-    if (demographics && (!demographics.ageRange || !demographics.incomeTier)) {
-      // Legacy format detected (missing new fields) - transform to new format
-      demographics = {
-        ageRange: demographics.age || demographics.ageRange || "25-34",
-        gender: demographics.gender || "all",
-        incomeTier: demographics.income || demographics.incomeTier || "medium",
-        region: demographics.region || "north-america",
-        ...(demographics.ethnicity && { ethnicity: demographics.ethnicity }),
-      };
-    }
+    // Transform demographics to ensure safe string values
+    const demographics = normalizeDemographics(row.target_demographics);
 
     const evaluation: ProductEvaluation = {
       id: row.id,
@@ -459,17 +468,8 @@ export async function getEvaluationsByUserId(userId: string, limit: number = 50)
     `;
 
     return results.map((row: any) => {
-      // Transform legacy demographics format to current format
-      let demographics = row.target_demographics;
-      if (demographics && (!demographics.ageRange || !demographics.incomeTier)) {
-        demographics = {
-          ageRange: demographics.age || demographics.ageRange || "25-34",
-          gender: demographics.gender || "all",
-          incomeTier: demographics.income || demographics.incomeTier || "medium",
-          region: demographics.region || "north-america",
-          ...(demographics.ethnicity && { ethnicity: demographics.ethnicity }),
-        };
-      }
+      // Transform demographics to ensure safe string values
+      const demographics = normalizeDemographics(row.target_demographics);
 
       const evaluation: ProductEvaluation & { id?: number } = {
         id: row.id,
@@ -1267,16 +1267,8 @@ export async function getShowcaseEvaluations(limit: number = 10): Promise<Produc
     `;
 
     return results.map((row: any) => {
-      let demographics = row.target_demographics;
-      if (demographics && (!demographics.ageRange || !demographics.incomeTier)) {
-        demographics = {
-          ageRange: demographics.age || demographics.ageRange || "25-34",
-          gender: demographics.gender || "all",
-          incomeTier: demographics.income || demographics.incomeTier || "medium",
-          region: demographics.region || "north-america",
-          ...(demographics.ethnicity && { ethnicity: demographics.ethnicity }),
-        };
-      }
+      // Transform demographics to ensure safe string values
+      const demographics = normalizeDemographics(row.target_demographics);
 
       const evaluation: ProductEvaluation = {
         id: row.id,
