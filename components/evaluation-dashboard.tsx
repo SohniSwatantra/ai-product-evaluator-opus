@@ -22,18 +22,31 @@ interface EvaluationDashboardProps {
   isShowcase?: boolean; // Showcase evaluations are fully viewable without auth
 }
 
+// Helper to safely extract demographics values as strings
+function getSafeDemoValue(demographics: any, newKey: string, legacyKey: string, fallback: string): string {
+  if (!demographics || typeof demographics !== 'object') return fallback;
+
+  const value = demographics[newKey] ?? demographics[legacyKey];
+
+  // Ensure the value is a string, not an object or other type
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return fallback;
+}
+
 export function EvaluationDashboard({ evaluation, onNewAnalysis, isShowcase = false }: EvaluationDashboardProps) {
   const user = useUser();
 
-  // Normalize demographics to handle legacy format
+  // Normalize demographics to handle legacy format - ensure all values are strings
+  const demographics = evaluation.targetDemographics;
   const normalizedEvaluation = {
     ...evaluation,
     targetDemographics: {
-      ageRange: evaluation.targetDemographics?.ageRange || (evaluation.targetDemographics as any)?.age || "25-34",
-      gender: evaluation.targetDemographics?.gender || "all",
-      incomeTier: evaluation.targetDemographics?.incomeTier || (evaluation.targetDemographics as any)?.income || "medium",
-      region: evaluation.targetDemographics?.region || "north-america",
-      ...(evaluation.targetDemographics?.ethnicity && { ethnicity: evaluation.targetDemographics.ethnicity }),
+      ageRange: getSafeDemoValue(demographics, 'ageRange', 'age', "25-34"),
+      gender: getSafeDemoValue(demographics, 'gender', 'gender', "all"),
+      incomeTier: getSafeDemoValue(demographics, 'incomeTier', 'income', "medium"),
+      region: getSafeDemoValue(demographics, 'region', 'region', "north-america"),
+      ...(typeof demographics?.ethnicity === 'string' && { ethnicity: demographics.ethnicity }),
     }
   };
 

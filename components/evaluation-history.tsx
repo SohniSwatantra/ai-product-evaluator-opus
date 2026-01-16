@@ -107,6 +107,18 @@ interface EvaluationCardProps {
   onClick?: () => void;
 }
 
+// Helper to safely extract demographics values as strings
+function getSafeDemoValue(demographics: any, newKey: string, legacyKey: string, fallback: string = 'N/A'): string {
+  if (!demographics || typeof demographics !== 'object') return fallback;
+
+  const value = demographics[newKey] ?? demographics[legacyKey];
+
+  // Ensure the value is a string, not an object or other type
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  return fallback;
+}
+
 function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
   // Safely handle missing or invalid data
   const buyingIntent = typeof evaluation.buyingIntentProbability === 'number' ? evaluation.buyingIntentProbability : 0;
@@ -150,7 +162,7 @@ function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
             <span className="flex items-center gap-1">
               <Target className="w-3 h-3" />
-              {evaluation.targetDemographics?.ageRange || (evaluation.targetDemographics as any)?.age || 'N/A'} • {evaluation.targetDemographics?.gender || 'N/A'} • {evaluation.targetDemographics?.incomeTier || (evaluation.targetDemographics as any)?.income || 'N/A'}
+              {getSafeDemoValue(evaluation.targetDemographics, 'ageRange', 'age')} • {getSafeDemoValue(evaluation.targetDemographics, 'gender', 'gender')} • {getSafeDemoValue(evaluation.targetDemographics, 'incomeTier', 'income')}
             </span>
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
