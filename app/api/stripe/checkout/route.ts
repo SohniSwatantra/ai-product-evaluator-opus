@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createCheckoutSession, CREDIT_PACKS, CreditPackId, ReferralInfo } from "@/lib/stripe";
+import { createCheckoutSession, CREDIT_PACKS, CreditPackId, ReferralInfo, DiscountInfo } from "@/lib/stripe";
 import { stackServerApp } from "@/stack/server";
-import { validateReferralCode, initReferralTables } from "@/lib/db";
+import { validateReferralCode, initReferralTables, validateDiscountCode, initDiscountTables } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { packId, referralCode } = body;
+    const { packId, referralCode, discountCode } = body;
 
     // Validate pack ID
     if (!packId || !CREDIT_PACKS[packId as CreditPackId]) {
@@ -26,11 +26,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize referral tables
-    await initReferralTables();
+    const pack = CREDIT_PACKS[packId as CreditPackId];
 
-    // Validate referral code if provided
+    // Initialize tables
+    await initReferralTables();
+    await initDiscountTables();
+
+    // Validate referral code if provided (takes priority over discount code)
     let referralInfo: ReferralInfo | undefined;
+    let discountInfo: DiscountInfo | undefined;
+
     if (referralCode && referralCode.trim()) {
       try {
         const referral = await validateReferralCode(referralCode.trim());
@@ -49,6 +54,27 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+    // Only check discount code if no referral code
+    else if (discountCode && discountCode.trim()) {
+      try {
+        // Convert pack price from cents to dollars for validation
+        const packPriceInDollars = pack.price / 100;
+        const discount = await validateDiscountCode(discountCode.trim(), packPriceInDollars);
+        discountInfo = {
+          code: discount.code,
+          codeId: discount.id,
+          discountType: discount.discount_type,
+          discountValue: Number(discount.discount_value),
+        };
+        console.log(`Applying discount code ${discount.code}: ${discount.discount_type === 'percentage' ? discount.discount_value + '%' : '€' + discount.discount_value} off`);
+      } catch (error: any) {
+        // Return error if discount code is invalid
+        return NextResponse.json(
+          { success: false, error: error.message || "Invalid discount code" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Get base URL for success/cancel redirects
     const origin = request.headers.get("origin") || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -59,7 +85,8 @@ export async function POST(request: NextRequest) {
       user.primaryEmail || "",
       `${origin}/pricing?success=true`,
       `${origin}/pricing?canceled=true`,
-      referralInfo
+      referralInfo,
+      discountInfo
     );
 
     return NextResponse.json({
