@@ -6,7 +6,23 @@ import { neon } from "@neondatabase/serverless";
 import type { ProductEvaluation, AXModelConfig, AXModelEvaluation, AXCouncilResult } from "@/types";
 
 // Initialize Neon client
-const sql = neon(process.env.DATABASE_URL || "");
+const getDatabaseUrl = () => {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error("DATABASE_URL is not set!");
+    throw new Error("DATABASE_URL environment variable is not configured");
+  }
+  return url;
+};
+
+// Lazy initialize to catch missing env var at runtime
+let _sql: ReturnType<typeof neon> | null = null;
+const sql = (...args: Parameters<ReturnType<typeof neon>>) => {
+  if (!_sql) {
+    _sql = neon(getDatabaseUrl());
+  }
+  return _sql(...args);
+};
 
 /**
  * Initialize database schema

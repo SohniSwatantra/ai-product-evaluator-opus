@@ -15,7 +15,14 @@ export async function GET(request: Request) {
     const includeStats = searchParams.get("stats") === "true";
 
     // Check if user is authenticated
-    const user = await stackServerApp.getUser();
+    let user;
+    try {
+      user = await stackServerApp.getUser();
+    } catch (authError) {
+      console.error("Auth error:", authError);
+      // Continue without user - will show showcase evaluations
+      user = null;
+    }
 
     let evaluations;
 
