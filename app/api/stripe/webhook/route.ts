@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { constructWebhookEvent, CREDIT_PACKS, CreditPackId } from "@/lib/stripe";
-import { addUserCredits, initCreditTables, recordReferralUsage, initReferralTables } from "@/lib/db";
+import { addUserCredits, initCreditTables, recordReferralUsage, initReferralTables, recordDiscountUsage, initDiscountTables } from "@/lib/db";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -86,6 +86,36 @@ export async function POST(request: NextRequest) {
         } catch (referralError: any) {
           // Don't fail the webhook if referral tracking fails
           console.error("Error recording referral usage:", referralError.message);
+        }
+      }
+
+      // Handle discount code tracking if a discount code was used (and no referral)
+      const discountCodeId = session.metadata?.discountCodeId;
+      const discountCode = session.metadata?.discountCode;
+
+      if (discountCodeId && discountCode && !referralCodeId) {
+        try {
+          // Initialize discount tables
+          await initDiscountTables();
+
+          // Calculate amounts in dollars
+          const originalAmountDollars = originalPrice / 100;
+          const discountAmountDollars = discountAmount / 100;
+          const finalAmountDollars = (originalPrice - discountAmount) / 100;
+
+          await recordDiscountUsage(
+            parseInt(discountCodeId, 10),
+            userId,
+            session.id,
+            originalAmountDollars,
+            discountAmountDollars,
+            finalAmountDollars
+          );
+
+          console.log(`Recorded discount usage: code=${discountCode}, discount=$${discountAmountDollars}`);
+        } catch (discountError: any) {
+          // Don't fail the webhook if discount tracking fails
+          console.error("Error recording discount usage:", discountError.message);
         }
       }
     }

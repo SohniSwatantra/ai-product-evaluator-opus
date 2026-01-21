@@ -60,6 +60,13 @@ export interface ReferralInfo {
   commissionPercent: number;
 }
 
+export interface DiscountInfo {
+  code: string;
+  codeId: number;
+  discountType: 'percentage' | 'fixed';
+  discountValue: number;
+}
+
 /**
  * Create a Stripe checkout session for purchasing credits
  */
@@ -69,7 +76,8 @@ export async function createCheckoutSession(
   userEmail: string,
   successUrl: string,
   cancelUrl: string,
-  referralInfo?: ReferralInfo
+  referralInfo?: ReferralInfo,
+  discountInfo?: DiscountInfo
 ): Promise<Stripe.Checkout.Session> {
   const pack = CREDIT_PACKS[packId];
 
@@ -80,16 +88,32 @@ export async function createCheckoutSession(
   // Calculate discounted price if referral code is applied
   let finalPrice = pack.price;
   let discountAmount = 0;
+  let discountDescription = "";
 
+  // Apply referral discount first (if present)
   if (referralInfo && referralInfo.discountPercent > 0) {
     discountAmount = Math.round(pack.price * (referralInfo.discountPercent / 100));
     finalPrice = pack.price - discountAmount;
+    discountDescription = `${referralInfo.discountPercent}% off with referral code: ${referralInfo.code}`;
+  }
+  // Apply discount code if present (and no referral - they don't stack)
+  else if (discountInfo) {
+    if (discountInfo.discountType === 'percentage') {
+      discountAmount = Math.round(pack.price * (discountInfo.discountValue / 100));
+    } else {
+      // Fixed discount in cents
+      discountAmount = Math.min(discountInfo.discountValue * 100, pack.price);
+    }
+    finalPrice = pack.price - discountAmount;
+    discountDescription = discountInfo.discountType === 'percentage'
+      ? `${discountInfo.discountValue}% off with code: ${discountInfo.code}`
+      : `€${discountInfo.discountValue} off with code: ${discountInfo.code}`;
   }
 
   // Build product description with discount info
   let productDescription = pack.description;
-  if (referralInfo) {
-    productDescription = `${pack.description} (${referralInfo.discountPercent}% off with code: ${referralInfo.code})`;
+  if (discountDescription) {
+    productDescription = `${pack.description} (${discountDescription})`;
   }
 
   // Build metadata
@@ -106,6 +130,14 @@ export async function createCheckoutSession(
     metadata.referralCodeId = referralInfo.codeId.toString();
     metadata.discountPercent = referralInfo.discountPercent.toString();
     metadata.commissionPercent = referralInfo.commissionPercent.toString();
+    metadata.discountAmount = discountAmount.toString();
+  }
+  // Add discount code info to metadata if present (and no referral)
+  else if (discountInfo) {
+    metadata.discountCode = discountInfo.code;
+    metadata.discountCodeId = discountInfo.codeId.toString();
+    metadata.discountType = discountInfo.discountType;
+    metadata.discountValue = discountInfo.discountValue.toString();
     metadata.discountAmount = discountAmount.toString();
   }
 

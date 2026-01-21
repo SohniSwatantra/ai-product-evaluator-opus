@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { BackgroundGlow } from "@/components/ui/background-components";
-import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins, Ticket, Copy, Check, ToggleLeft, ToggleRight, Users, DollarSign } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ArrowLeft, Power, GripVertical, Star, Coins, Ticket, Copy, Check, ToggleLeft, ToggleRight, Users, DollarSign, Percent } from "lucide-react";
 import type { AXModelConfig } from "@/types";
-import type { VoucherCode, ReferralCode } from "@/lib/db";
+import type { VoucherCode, ReferralCode, DiscountCode } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 export default function AdminPage() {
@@ -75,11 +75,34 @@ export default function AdminPage() {
   const [creatingReferral, setCreatingReferral] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
 
+  // Discount state
+  const [discounts, setDiscounts] = useState<DiscountCode[]>([]);
+  const [discountStats, setDiscountStats] = useState<{
+    totalCodes: number;
+    activeCodes: number;
+    totalUses: number;
+    totalDiscountGiven: number;
+  } | null>(null);
+  const [loadingDiscounts, setLoadingDiscounts] = useState(false);
+  const [showDiscountForm, setShowDiscountForm] = useState(false);
+  const [newDiscount, setNewDiscount] = useState({
+    discount_type: "percentage" as "percentage" | "fixed",
+    discount_value: 10,
+    description: "",
+    min_purchase_amount: "",
+    max_uses: "",
+    expires_at: "",
+    custom_code: ""
+  });
+  const [creatingDiscount, setCreatingDiscount] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+
   useEffect(() => {
     checkAdminStatus();
     fetchCurrentBalance();
     fetchVouchers();
     fetchReferrals();
+    fetchDiscounts();
   }, []);
 
   const fetchCurrentBalance = async () => {
@@ -463,6 +486,106 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error("Failed to toggle referral:", err);
+    }
+  };
+
+  // Discount functions
+  const fetchDiscounts = async () => {
+    try {
+      setLoadingDiscounts(true);
+      const response = await fetch("/api/admin/discounts");
+      const data = await response.json();
+      if (data.discounts) {
+        setDiscounts(data.discounts);
+      }
+    } catch (err) {
+      console.error("Failed to fetch discounts:", err);
+    } finally {
+      setLoadingDiscounts(false);
+    }
+  };
+
+  const handleCreateDiscount = async () => {
+    if (newDiscount.discount_value <= 0) {
+      setDiscountError("Discount value must be greater than 0");
+      return;
+    }
+
+    try {
+      setCreatingDiscount(true);
+      setDiscountError(null);
+
+      const response = await fetch("/api/admin/discounts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: newDiscount.custom_code || undefined,
+          autoGenerate: !newDiscount.custom_code,
+          discountType: newDiscount.discount_type,
+          discountValue: newDiscount.discount_value,
+          description: newDiscount.description || null,
+          minPurchaseAmount: newDiscount.min_purchase_amount ? parseFloat(newDiscount.min_purchase_amount) : null,
+          maxUses: newDiscount.max_uses ? parseInt(newDiscount.max_uses) : null,
+          expiresAt: newDiscount.expires_at || null
+        })
+      });
+
+      const data = await response.json();
+      if (data.discount) {
+        setDiscounts([data.discount, ...discounts]);
+        setShowDiscountForm(false);
+        setNewDiscount({
+          discount_type: "percentage",
+          discount_value: 10,
+          description: "",
+          min_purchase_amount: "",
+          max_uses: "",
+          expires_at: "",
+          custom_code: ""
+        });
+        fetchDiscounts();
+      } else {
+        setDiscountError(data.error || "Failed to create discount code");
+      }
+    } catch (err: any) {
+      setDiscountError(err.message || "Failed to create discount code");
+    } finally {
+      setCreatingDiscount(false);
+    }
+  };
+
+  const handleDeleteDiscount = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this discount code?")) return;
+
+    try {
+      const response = await fetch(`/api/admin/discounts?id=${id}`, {
+        method: "DELETE"
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setDiscounts(discounts.filter(d => d.id !== id));
+        fetchDiscounts();
+      }
+    } catch (err) {
+      console.error("Failed to delete discount:", err);
+    }
+  };
+
+  const handleToggleDiscount = async (id: number, currentActive: boolean) => {
+    try {
+      const response = await fetch("/api/admin/discounts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_active: !currentActive })
+      });
+
+      const data = await response.json();
+      if (data.discount) {
+        setDiscounts(discounts.map(d => d.id === id ? data.discount : d));
+      }
+    } catch (err) {
+      console.error("Failed to toggle discount:", err);
     }
   };
 
@@ -1019,6 +1142,230 @@ export default function AdminPage() {
                       </button>
                       <button
                         onClick={() => handleDeleteReferral(referral.id)}
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Discount Codes Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Percent className="w-6 h-6 text-amber-400" />
+              <h2 className="text-xl font-bold text-white">Discount Codes</h2>
+              {discountStats && (
+                <span className="text-sm text-neutral-400">
+                  ({discountStats.activeCodes} active, €{discountStats.totalDiscountGiven.toFixed(2)} given)
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setShowDiscountForm(!showDiscountForm)}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Create Discount
+            </button>
+          </div>
+
+          {/* Discount Creation Form */}
+          {showDiscountForm && (
+            <div className="p-6 rounded-2xl border border-amber-500/30 bg-amber-900/10">
+              <h3 className="text-lg font-semibold text-white mb-4">Create Discount Code</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Discount Type</label>
+                  <select
+                    value={newDiscount.discount_type}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, discount_type: e.target.value as "percentage" | "fixed" })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (€)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">
+                    Discount Value {newDiscount.discount_type === "percentage" ? "(%)" : "(€)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={newDiscount.discount_value}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, discount_value: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                    min="0"
+                    max={newDiscount.discount_type === "percentage" ? "100" : undefined}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-sm text-neutral-400 mb-1">Description (optional)</label>
+                  <input
+                    type="text"
+                    value={newDiscount.description}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, description: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                    placeholder="e.g., Summer Sale 2024"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Custom Code (optional)</label>
+                  <input
+                    type="text"
+                    value={newDiscount.custom_code}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, custom_code: e.target.value.toUpperCase() })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white uppercase"
+                    placeholder="Auto-generate if empty"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Min. Purchase (€, optional)</label>
+                  <input
+                    type="number"
+                    value={newDiscount.min_purchase_amount}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, min_purchase_amount: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                    placeholder="No minimum"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Max Uses (optional)</label>
+                  <input
+                    type="number"
+                    value={newDiscount.max_uses}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, max_uses: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                    placeholder="Unlimited"
+                    min="1"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-neutral-400 mb-1">Expires (optional)</label>
+                  <input
+                    type="date"
+                    value={newDiscount.expires_at}
+                    onChange={(e) => setNewDiscount({ ...newDiscount, expires_at: e.target.value })}
+                    className="w-full px-4 py-2 rounded-lg bg-black/50 border border-white/10 text-white"
+                  />
+                </div>
+              </div>
+
+              {discountError && (
+                <p className="mt-4 text-red-400 text-sm">{discountError}</p>
+              )}
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  onClick={handleCreateDiscount}
+                  disabled={creatingDiscount}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+                >
+                  {creatingDiscount ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4" />
+                  )}
+                  Create Discount
+                </button>
+                <button
+                  onClick={() => setShowDiscountForm(false)}
+                  className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Discounts List */}
+          <div className="p-6 rounded-2xl border border-white/10 bg-black">
+            <h3 className="text-lg font-semibold text-white mb-4">All Discount Codes</h3>
+
+            {loadingDiscounts ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+              </div>
+            ) : discounts.length === 0 ? (
+              <p className="text-neutral-400 text-center py-8">No discount codes yet</p>
+            ) : (
+              <div className="space-y-3">
+                {discounts.map((discount) => (
+                  <div
+                    key={discount.id}
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(discount.code);
+                            setCopiedCode(discount.code);
+                            setTimeout(() => setCopiedCode(null), 2000);
+                          }}
+                          className="flex items-center gap-2 font-mono text-amber-400 hover:text-amber-300 transition-colors"
+                        >
+                          {discount.code}
+                          {copiedCode === discount.code ? (
+                            <Check className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+                        <span className="text-sm text-neutral-300">
+                          {discount.discount_type === "percentage"
+                            ? `${Number(discount.discount_value)}% off`
+                            : `€${Number(discount.discount_value)} off`}
+                        </span>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          discount.is_active
+                            ? "bg-green-500/20 text-green-400"
+                            : "bg-neutral-500/20 text-neutral-400"
+                        )}>
+                          {discount.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                      <div className="text-sm text-neutral-400">
+                        {discount.description && <span>{discount.description} • </span>}
+                        Uses: {discount.current_uses}{discount.max_uses ? `/${discount.max_uses}` : ""} •
+                        Total: €{Number(discount.total_discount_given).toFixed(2)}
+                        {discount.min_purchase_amount && ` • Min: €${Number(discount.min_purchase_amount)}`}
+                        {discount.expires_at && ` • Expires: ${new Date(discount.expires_at).toLocaleDateString()}`}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleDiscount(discount.id, discount.is_active)}
+                        className={cn(
+                          "p-2 rounded-lg transition-colors",
+                          discount.is_active
+                            ? "text-green-400 hover:bg-green-500/20"
+                            : "text-neutral-500 hover:bg-neutral-800"
+                        )}
+                        title={discount.is_active ? "Deactivate" : "Activate"}
+                      >
+                        {discount.is_active ? (
+                          <ToggleRight className="w-5 h-5" />
+                        ) : (
+                          <ToggleLeft className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDiscount(discount.id)}
                         className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 transition-colors"
                         title="Delete"
                       >

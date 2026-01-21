@@ -159,7 +159,7 @@ function EvaluationCard({ evaluation, onClick }: EvaluationCardProps) {
             <div className="text-xs text-neutral-500 dark:text-neutral-500">Intent</div>
           </div>
 
-          <AnchorBadge anchor={evaluation.purchaseIntentAnchor} size="sm" />
+          <AnchorBadge anchor={evaluation.purchaseIntentAnchor} className="text-xs" />
         </div>
       </div>
 
