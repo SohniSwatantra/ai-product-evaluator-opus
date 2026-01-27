@@ -380,11 +380,11 @@ ${scrapedDataAppendix}
         const savedId = await (0, db_1.saveEvaluation)(evaluation, userId);
         evaluation.id = savedId; // Add ID to evaluation for multi-model AX feature
         console.log(`💾 Evaluation stored in evaluations table with ID: ${savedId}`);
-        // Deduct credit for signed-in users on successful completion
+        // Deduct credits for signed-in users on successful completion (10 credits per model run)
         if (userId) {
             try {
-                await (0, db_1.deductUserCredits)(userId, 1, `Main evaluation for ${validatedUrl}`);
-                console.log(`💳 Deducted 1 credit from user ${userId}`);
+                await (0, db_1.deductUserCredits)(userId, 10, `Main evaluation for ${validatedUrl}`);
+                console.log(`💳 Deducted 10 credits from user ${userId}`);
             }
             catch (creditError) {
                 console.error("Failed to deduct credit:", creditError);

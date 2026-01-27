@@ -47,9 +47,51 @@ exports.hasUserRedeemedVoucher = hasUserRedeemedVoucher;
 exports.getUserVoucherRedemptions = getUserVoucherRedemptions;
 exports.redeemVoucher = redeemVoucher;
 exports.getVoucherStats = getVoucherStats;
+exports.initReferralTables = initReferralTables;
+exports.generateReferralCode = generateReferralCode;
+exports.createReferralCode = createReferralCode;
+exports.getReferralCodes = getReferralCodes;
+exports.getReferralCodeByCode = getReferralCodeByCode;
+exports.updateReferralCode = updateReferralCode;
+exports.deleteReferralCode = deleteReferralCode;
+exports.toggleReferralCodeActive = toggleReferralCodeActive;
+exports.validateReferralCode = validateReferralCode;
+exports.recordReferralUsage = recordReferralUsage;
+exports.getReferralUsages = getReferralUsages;
+exports.getReferralStats = getReferralStats;
+exports.initDiscountTables = initDiscountTables;
+exports.generateDiscountCode = generateDiscountCode;
+exports.createDiscountCode = createDiscountCode;
+exports.getDiscountCodes = getDiscountCodes;
+exports.getDiscountCodeById = getDiscountCodeById;
+exports.getDiscountCodeByCode = getDiscountCodeByCode;
+exports.validateDiscountCode = validateDiscountCode;
+exports.calculateDiscount = calculateDiscount;
+exports.recordDiscountUsage = recordDiscountUsage;
+exports.updateDiscountCode = updateDiscountCode;
+exports.deleteDiscountCode = deleteDiscountCode;
+exports.getDiscountUsages = getDiscountUsages;
+exports.getDiscountStats = getDiscountStats;
 const serverless_1 = require("@neondatabase/serverless");
 // Initialize Neon client
-const sql = (0, serverless_1.neon)(process.env.DATABASE_URL || "");
+const getDatabaseUrl = () => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+        console.error("DATABASE_URL is not set!");
+        throw new Error("DATABASE_URL environment variable is not configured");
+    }
+    return url;
+};
+// Lazy initialize to catch missing env var at runtime
+let _sql = null;
+const sql = async (...args) => {
+    if (!_sql) {
+        _sql = (0, serverless_1.neon)(getDatabaseUrl());
+    }
+    const result = await _sql(...args);
+    // Cast to array - tagged template queries always return row arrays
+    return result;
+};
 /**
  * Initialize database schema
  * Creates the evaluations table if it doesn't exist
@@ -903,7 +945,7 @@ async function initCreditTables() {
     }
 }
 // Free credits configuration
-const FREE_CREDITS_FOR_NEW_USERS = 10;
+const FREE_CREDITS_FOR_NEW_USERS = 100;
 const ADMIN_CREDITS = 300;
 const ADMIN_EMAIL = "sohni.swatantra@gmail.com";
 /**
@@ -1604,6 +1646,644 @@ async function getVoucherStats() {
     }
     catch (error) {
         console.error("Error fetching voucher stats:", error);
+        throw error;
+    }
+}
+/**
+ * Initialize referral code tables
+ */
+async function initReferralTables() {
+    try {
+        // Create referral_codes table
+        await sql `
+      CREATE TABLE IF NOT EXISTS referral_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        owner_name VARCHAR(255) NOT NULL,
+        owner_email VARCHAR(255),
+        discount_percent INTEGER DEFAULT 10,
+        commission_percent INTEGER DEFAULT 20,
+        max_uses INTEGER,
+        current_uses INTEGER DEFAULT 0,
+        total_sales_amount DECIMAL(10,2) DEFAULT 0,
+        total_commission_earned DECIMAL(10,2) DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+        // Create referral_usages table
+        await sql `
+      CREATE TABLE IF NOT EXISTS referral_usages (
+        id SERIAL PRIMARY KEY,
+        referral_code_id INTEGER REFERENCES referral_codes(id),
+        user_id VARCHAR(255),
+        stripe_session_id VARCHAR(255),
+        sale_amount DECIMAL(10,2),
+        discount_amount DECIMAL(10,2),
+        commission_amount DECIMAL(10,2),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(referral_code_id, stripe_session_id)
+      )
+    `;
+        // Create indices
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_referral_codes_code ON referral_codes(code)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_referral_codes_active ON referral_codes(is_active)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_referral_usages_code_id ON referral_usages(referral_code_id)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_referral_usages_stripe_session ON referral_usages(stripe_session_id)
+    `;
+        console.log("Referral tables initialized successfully");
+    }
+    catch (error) {
+        console.error("Error initializing referral tables:", error);
+        throw error;
+    }
+}
+/**
+ * Generate a random referral code
+ */
+function generateReferralCode(prefix = "REF") {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = prefix + "-";
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+/**
+ * Create a new referral code (admin only)
+ */
+async function createReferralCode(ownerName, ownerEmail = null, discountPercent = 10, commissionPercent = 20, maxUses = null, expiresAt = null, customCode) {
+    try {
+        const code = customCode || generateReferralCode();
+        const result = await sql `
+      INSERT INTO referral_codes (code, owner_name, owner_email, discount_percent, commission_percent, max_uses, expires_at)
+      VALUES (${code}, ${ownerName}, ${ownerEmail}, ${discountPercent}, ${commissionPercent}, ${maxUses}, ${expiresAt})
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+        console.log(`Created referral code: ${code} for ${ownerName}`);
+        return result[0];
+    }
+    catch (error) {
+        if (error.code === '23505') {
+            throw new Error("A referral code with this code already exists");
+        }
+        console.error("Error creating referral code:", error);
+        throw error;
+    }
+}
+/**
+ * Get all referral codes (admin only)
+ */
+async function getReferralCodes() {
+    try {
+        const results = await sql `
+      SELECT id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+      FROM referral_codes
+      ORDER BY created_at DESC
+    `;
+        return results;
+    }
+    catch (error) {
+        console.error("Error fetching referral codes:", error);
+        throw error;
+    }
+}
+/**
+ * Get a referral code by code string
+ */
+async function getReferralCodeByCode(code) {
+    try {
+        const results = await sql `
+      SELECT id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+      FROM referral_codes
+      WHERE UPPER(code) = UPPER(${code})
+    `;
+        return results.length > 0 ? results[0] : null;
+    }
+    catch (error) {
+        console.error("Error fetching referral code:", error);
+        throw error;
+    }
+}
+/**
+ * Update a referral code (admin only)
+ */
+async function updateReferralCode(id, updates) {
+    try {
+        const result = await sql `
+      UPDATE referral_codes
+      SET
+        owner_name = COALESCE(${updates.owner_name || null}, owner_name),
+        owner_email = COALESCE(${updates.owner_email || null}, owner_email),
+        discount_percent = COALESCE(${updates.discount_percent ?? null}, discount_percent),
+        commission_percent = COALESCE(${updates.commission_percent ?? null}, commission_percent),
+        max_uses = COALESCE(${updates.max_uses ?? null}, max_uses),
+        is_active = COALESCE(${updates.is_active ?? null}, is_active),
+        expires_at = COALESCE(${updates.expires_at || null}, expires_at)
+      WHERE id = ${id}
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+        return result.length > 0 ? result[0] : null;
+    }
+    catch (error) {
+        console.error("Error updating referral code:", error);
+        throw error;
+    }
+}
+/**
+ * Delete a referral code (admin only)
+ */
+async function deleteReferralCode(id) {
+    try {
+        const result = await sql `
+      DELETE FROM referral_codes
+      WHERE id = ${id}
+      RETURNING id
+    `;
+        return result.length > 0;
+    }
+    catch (error) {
+        console.error("Error deleting referral code:", error);
+        throw error;
+    }
+}
+/**
+ * Toggle referral code active status (admin only)
+ */
+async function toggleReferralCodeActive(id, isActive) {
+    try {
+        const result = await sql `
+      UPDATE referral_codes
+      SET is_active = ${isActive}
+      WHERE id = ${id}
+      RETURNING id, code, owner_name, owner_email, discount_percent, commission_percent, max_uses, current_uses, total_sales_amount, total_commission_earned, is_active, expires_at, created_at
+    `;
+        return result.length > 0 ? result[0] : null;
+    }
+    catch (error) {
+        console.error("Error toggling referral code active status:", error);
+        throw error;
+    }
+}
+/**
+ * Validate a referral code for checkout
+ * Returns the referral code details if valid, throws error if invalid
+ */
+async function validateReferralCode(code) {
+    const referral = await getReferralCodeByCode(code);
+    if (!referral) {
+        throw new Error("Invalid referral code");
+    }
+    if (!referral.is_active) {
+        throw new Error("This referral code is no longer active");
+    }
+    if (referral.expires_at && new Date(referral.expires_at) < new Date()) {
+        throw new Error("This referral code has expired");
+    }
+    if (referral.max_uses !== null && referral.current_uses >= referral.max_uses) {
+        throw new Error("This referral code has reached its maximum number of uses");
+    }
+    return referral;
+}
+/**
+ * Record a referral usage after successful payment
+ */
+async function recordReferralUsage(referralCodeId, userId, stripeSessionId, saleAmount, discountAmount, commissionAmount) {
+    try {
+        // Insert the usage record
+        const usageResult = await sql `
+      INSERT INTO referral_usages (referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount)
+      VALUES (${referralCodeId}, ${userId}, ${stripeSessionId}, ${saleAmount}, ${discountAmount}, ${commissionAmount})
+      RETURNING id, referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount, created_at
+    `;
+        // Update the referral code stats
+        await sql `
+      UPDATE referral_codes
+      SET
+        current_uses = current_uses + 1,
+        total_sales_amount = total_sales_amount + ${saleAmount},
+        total_commission_earned = total_commission_earned + ${commissionAmount}
+      WHERE id = ${referralCodeId}
+    `;
+        console.log(`Recorded referral usage: code_id=${referralCodeId}, sale=$${saleAmount}, commission=$${commissionAmount}`);
+        return usageResult[0];
+    }
+    catch (error) {
+        if (error.code === '23505') {
+            console.log(`Referral usage already recorded for session ${stripeSessionId}`);
+            throw new Error("Referral usage already recorded for this session");
+        }
+        console.error("Error recording referral usage:", error);
+        throw error;
+    }
+}
+/**
+ * Get referral usages for a specific referral code
+ */
+async function getReferralUsages(referralCodeId) {
+    try {
+        const results = await sql `
+      SELECT id, referral_code_id, user_id, stripe_session_id, sale_amount, discount_amount, commission_amount, created_at
+      FROM referral_usages
+      WHERE referral_code_id = ${referralCodeId}
+      ORDER BY created_at DESC
+    `;
+        return results;
+    }
+    catch (error) {
+        console.error("Error fetching referral usages:", error);
+        throw error;
+    }
+}
+/**
+ * Get referral stats (admin only)
+ */
+async function getReferralStats() {
+    try {
+        const statsResult = await sql `
+      SELECT
+        COUNT(*) as total_codes,
+        COUNT(CASE WHEN is_active THEN 1 END) as active_codes,
+        SUM(current_uses) as total_uses,
+        SUM(total_sales_amount) as total_sales,
+        SUM(total_commission_earned) as total_commission
+      FROM referral_codes
+    `;
+        const stats = statsResult[0];
+        return {
+            totalCodes: parseInt(stats.total_codes) || 0,
+            activeCodes: parseInt(stats.active_codes) || 0,
+            totalUses: parseInt(stats.total_uses) || 0,
+            totalSales: parseFloat(stats.total_sales) || 0,
+            totalCommission: parseFloat(stats.total_commission) || 0
+        };
+    }
+    catch (error) {
+        console.error("Error fetching referral stats:", error);
+        throw error;
+    }
+}
+/**
+ * Initialize discount code tables
+ */
+async function initDiscountTables() {
+    try {
+        // Create discount_codes table
+        await sql `
+      CREATE TABLE IF NOT EXISTS discount_codes (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(50) UNIQUE NOT NULL,
+        description TEXT,
+        discount_type VARCHAR(20) NOT NULL DEFAULT 'percentage',
+        discount_value DECIMAL(10,2) NOT NULL,
+        min_purchase_amount DECIMAL(10,2),
+        max_uses INTEGER,
+        current_uses INTEGER DEFAULT 0,
+        total_discount_given DECIMAL(10,2) DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        expires_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
+        // Create discount_usages table
+        await sql `
+      CREATE TABLE IF NOT EXISTS discount_usages (
+        id SERIAL PRIMARY KEY,
+        discount_code_id INTEGER REFERENCES discount_codes(id) ON DELETE CASCADE,
+        user_id VARCHAR(255),
+        stripe_session_id VARCHAR(255),
+        original_amount DECIMAL(10,2),
+        discount_amount DECIMAL(10,2),
+        final_amount DECIMAL(10,2),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(discount_code_id, stripe_session_id)
+      )
+    `;
+        // Create indices
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_discount_codes_code ON discount_codes(code)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_discount_codes_active ON discount_codes(is_active)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_discount_usages_code_id ON discount_usages(discount_code_id)
+    `;
+        await sql `
+      CREATE INDEX IF NOT EXISTS idx_discount_usages_stripe_session ON discount_usages(stripe_session_id)
+    `;
+        console.log("Discount tables initialized successfully");
+    }
+    catch (error) {
+        console.error("Error initializing discount tables:", error);
+        throw error;
+    }
+}
+/**
+ * Generate a random discount code
+ */
+function generateDiscountCode(prefix = "SAVE") {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = prefix;
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+/**
+ * Create a new discount code
+ */
+async function createDiscountCode(code, discountType, discountValue, description, minPurchaseAmount, maxUses, expiresAt) {
+    try {
+        const result = await sql `
+      INSERT INTO discount_codes (
+        code,
+        description,
+        discount_type,
+        discount_value,
+        min_purchase_amount,
+        max_uses,
+        expires_at
+      ) VALUES (
+        ${code.toUpperCase()},
+        ${description || null},
+        ${discountType},
+        ${discountValue},
+        ${minPurchaseAmount || null},
+        ${maxUses || null},
+        ${expiresAt || null}
+      )
+      RETURNING *
+    `;
+        return result[0];
+    }
+    catch (error) {
+        if (error.code === '23505') { // Unique violation
+            throw new Error("A discount code with this code already exists");
+        }
+        console.error("Error creating discount code:", error);
+        throw error;
+    }
+}
+/**
+ * Get all discount codes (admin only)
+ */
+async function getDiscountCodes() {
+    try {
+        const results = await sql `
+      SELECT * FROM discount_codes
+      ORDER BY created_at DESC
+    `;
+        return results;
+    }
+    catch (error) {
+        console.error("Error fetching discount codes:", error);
+        throw error;
+    }
+}
+/**
+ * Get a discount code by ID
+ */
+async function getDiscountCodeById(id) {
+    try {
+        const results = await sql `
+      SELECT * FROM discount_codes WHERE id = ${id}
+    `;
+        return results.length > 0 ? results[0] : null;
+    }
+    catch (error) {
+        console.error("Error fetching discount code by ID:", error);
+        throw error;
+    }
+}
+/**
+ * Get a discount code by code string
+ */
+async function getDiscountCodeByCode(code) {
+    try {
+        const results = await sql `
+      SELECT * FROM discount_codes WHERE UPPER(code) = ${code.toUpperCase()}
+    `;
+        return results.length > 0 ? results[0] : null;
+    }
+    catch (error) {
+        console.error("Error fetching discount code by code:", error);
+        throw error;
+    }
+}
+/**
+ * Validate a discount code for use
+ */
+async function validateDiscountCode(code, purchaseAmount) {
+    try {
+        const discount = await getDiscountCodeByCode(code);
+        if (!discount) {
+            throw new Error("Invalid discount code");
+        }
+        if (!discount.is_active) {
+            throw new Error("This discount code is no longer active");
+        }
+        if (discount.expires_at && new Date(discount.expires_at) < new Date()) {
+            throw new Error("This discount code has expired");
+        }
+        if (discount.max_uses && discount.current_uses >= discount.max_uses) {
+            throw new Error("This discount code has reached its maximum uses");
+        }
+        if (discount.min_purchase_amount && purchaseAmount && purchaseAmount < Number(discount.min_purchase_amount)) {
+            throw new Error(`Minimum purchase amount of €${discount.min_purchase_amount} required`);
+        }
+        return discount;
+    }
+    catch (error) {
+        throw error;
+    }
+}
+/**
+ * Calculate discount amount
+ */
+function calculateDiscount(discount, originalAmount) {
+    let discountAmount;
+    if (discount.discount_type === 'percentage') {
+        discountAmount = (originalAmount * Number(discount.discount_value)) / 100;
+    }
+    else {
+        discountAmount = Math.min(Number(discount.discount_value), originalAmount);
+    }
+    const finalAmount = Math.max(0, originalAmount - discountAmount);
+    return {
+        discountAmount: Math.round(discountAmount * 100) / 100,
+        finalAmount: Math.round(finalAmount * 100) / 100
+    };
+}
+/**
+ * Record discount code usage
+ */
+async function recordDiscountUsage(discountCodeId, userId, stripeSessionId, originalAmount, discountAmount, finalAmount) {
+    try {
+        // Insert usage record
+        await sql `
+      INSERT INTO discount_usages (
+        discount_code_id,
+        user_id,
+        stripe_session_id,
+        original_amount,
+        discount_amount,
+        final_amount
+      ) VALUES (
+        ${discountCodeId},
+        ${userId},
+        ${stripeSessionId},
+        ${originalAmount},
+        ${discountAmount},
+        ${finalAmount}
+      )
+      ON CONFLICT (discount_code_id, stripe_session_id) DO NOTHING
+    `;
+        // Update discount code usage stats
+        await sql `
+      UPDATE discount_codes
+      SET
+        current_uses = current_uses + 1,
+        total_discount_given = total_discount_given + ${discountAmount}
+      WHERE id = ${discountCodeId}
+    `;
+        console.log(`Recorded discount usage for code ID ${discountCodeId}`);
+    }
+    catch (error) {
+        console.error("Error recording discount usage:", error);
+        throw error;
+    }
+}
+/**
+ * Update a discount code
+ */
+async function updateDiscountCode(id, updates) {
+    try {
+        const setClauses = [];
+        const values = [];
+        if (updates.description !== undefined) {
+            setClauses.push(`description = $${values.length + 1}`);
+            values.push(updates.description);
+        }
+        if (updates.discount_type !== undefined) {
+            setClauses.push(`discount_type = $${values.length + 1}`);
+            values.push(updates.discount_type);
+        }
+        if (updates.discount_value !== undefined) {
+            setClauses.push(`discount_value = $${values.length + 1}`);
+            values.push(updates.discount_value);
+        }
+        if (updates.min_purchase_amount !== undefined) {
+            setClauses.push(`min_purchase_amount = $${values.length + 1}`);
+            values.push(updates.min_purchase_amount);
+        }
+        if (updates.max_uses !== undefined) {
+            setClauses.push(`max_uses = $${values.length + 1}`);
+            values.push(updates.max_uses);
+        }
+        if (updates.is_active !== undefined) {
+            setClauses.push(`is_active = $${values.length + 1}`);
+            values.push(updates.is_active);
+        }
+        if (updates.expires_at !== undefined) {
+            setClauses.push(`expires_at = $${values.length + 1}`);
+            values.push(updates.expires_at);
+        }
+        if (setClauses.length === 0) {
+            return await getDiscountCodeById(id);
+        }
+        // For simple toggle, use direct query
+        if (updates.is_active !== undefined && Object.keys(updates).length === 1) {
+            const result = await sql `
+        UPDATE discount_codes
+        SET is_active = ${updates.is_active}
+        WHERE id = ${id}
+        RETURNING *
+      `;
+            return result.length > 0 ? result[0] : null;
+        }
+        // For other updates, get and return
+        const result = await sql `
+      UPDATE discount_codes
+      SET is_active = COALESCE(${updates.is_active}, is_active),
+          description = COALESCE(${updates.description}, description),
+          discount_value = COALESCE(${updates.discount_value}, discount_value),
+          min_purchase_amount = COALESCE(${updates.min_purchase_amount}, min_purchase_amount),
+          max_uses = COALESCE(${updates.max_uses}, max_uses),
+          expires_at = COALESCE(${updates.expires_at}, expires_at)
+      WHERE id = ${id}
+      RETURNING *
+    `;
+        return result.length > 0 ? result[0] : null;
+    }
+    catch (error) {
+        console.error("Error updating discount code:", error);
+        throw error;
+    }
+}
+/**
+ * Delete a discount code
+ */
+async function deleteDiscountCode(id) {
+    try {
+        const result = await sql `
+      DELETE FROM discount_codes WHERE id = ${id} RETURNING id
+    `;
+        return result.length > 0;
+    }
+    catch (error) {
+        console.error("Error deleting discount code:", error);
+        throw error;
+    }
+}
+/**
+ * Get discount code usages
+ */
+async function getDiscountUsages(discountCodeId) {
+    try {
+        const results = await sql `
+      SELECT * FROM discount_usages
+      WHERE discount_code_id = ${discountCodeId}
+      ORDER BY created_at DESC
+    `;
+        return results;
+    }
+    catch (error) {
+        console.error("Error fetching discount usages:", error);
+        throw error;
+    }
+}
+/**
+ * Get discount stats (admin only)
+ */
+async function getDiscountStats() {
+    try {
+        const statsResult = await sql `
+      SELECT
+        COUNT(*) as total_codes,
+        COUNT(CASE WHEN is_active THEN 1 END) as active_codes,
+        SUM(current_uses) as total_uses,
+        SUM(total_discount_given) as total_discount_given
+      FROM discount_codes
+    `;
+        const stats = statsResult[0];
+        return {
+            totalCodes: parseInt(stats.total_codes) || 0,
+            activeCodes: parseInt(stats.active_codes) || 0,
+            totalUses: parseInt(stats.total_uses) || 0,
+            totalDiscountGiven: parseFloat(stats.total_discount_given) || 0
+        };
+    }
+    catch (error) {
+        console.error("Error fetching discount stats:", error);
         throw error;
     }
 }
