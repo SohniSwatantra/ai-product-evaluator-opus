@@ -17,11 +17,13 @@ const getDatabaseUrl = () => {
 
 // Lazy initialize to catch missing env var at runtime
 let _sql: ReturnType<typeof neon> | null = null;
-const sql = (...args: Parameters<ReturnType<typeof neon>>) => {
+const sql = async (...args: Parameters<ReturnType<typeof neon>>): Promise<Record<string, any>[]> => {
   if (!_sql) {
     _sql = neon(getDatabaseUrl());
   }
-  return _sql(...args);
+  const result = await _sql(...args);
+  // Cast to array - tagged template queries always return row arrays
+  return result as Record<string, any>[];
 };
 
 /**
