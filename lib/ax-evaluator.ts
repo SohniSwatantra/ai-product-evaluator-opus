@@ -5,7 +5,7 @@
  * Evaluates how easily AI agents can access, understand, and interact with websites
  */
 
-import type { AgentExperience, AXFactor } from "@/types";
+import type { AgentExperience, AXFactor, ContentNegotiation } from "@/types";
 
 /**
  * Calculate AX Score and ANPS from evaluation data
@@ -82,12 +82,26 @@ export function parseAgentExperience(response: string): AgentExperience | null {
     // Calculate final scores
     const { axScore, anps } = calculateAXScore(data.factors);
 
+    // Parse content negotiation if available
+    let contentNegotiation: ContentNegotiation | undefined;
+    if (data.contentNegotiation) {
+      contentNegotiation = {
+        supportsMarkdown: data.contentNegotiation.supportsMarkdown ?? false,
+        supportsAgentFriendlyFormat: data.contentNegotiation.supportsAgentFriendlyFormat ?? false,
+        hasLlmsTxt: data.contentNegotiation.hasLlmsTxt ?? false,
+        acceptHeaderBehavior: data.contentNegotiation.acceptHeaderBehavior ?? "No content negotiation detected",
+        score: data.contentNegotiation.score ?? 0,
+        details: data.contentNegotiation.details ?? ""
+      };
+    }
+
     return {
       axScore,
       anps,
       factors: data.factors,
       agentAccessibility: data.agentAccessibility,
       recommendations: data.recommendations,
+      contentNegotiation
     };
   } catch (error) {
     console.error("Failed to parse agent experience:", error);
@@ -108,7 +122,7 @@ AX measures how easily AI agents (like ChatGPT, Claude, Perplexity) can access, 
 - Key features and benefits
 - How to get more information
 
-**Evaluate these 7 Agent Experience factors (score each 0-100):**
+**Evaluate these 8 Agent Experience factors (score each 0-100):**
 
 1. **Structured Data** - Presence of Schema.org markup, JSON-LD, Open Graph tags, meta descriptions
 2. **Semantic HTML** - Proper heading hierarchy (H1, H2, H3), semantic tags, ARIA labels
@@ -117,6 +131,15 @@ AX measures how easily AI agents (like ChatGPT, Claude, Perplexity) can access, 
 5. **API Availability** - REST APIs, GraphQL endpoints, MCP servers, or other programmatic access
 6. **Content Clarity** - Purpose and value proposition clear in first 100 words, jargon-free language
 7. **Agent Interaction** - Chat widgets, contact forms, feedback mechanisms, structured FAQs
+8. **Content Negotiation** - Website responds with agent-friendly formats (pure markdown, plain text) when accessed with specific Accept headers or by AI agents. Check for llms.txt, .well-known/llms.txt, or content that adapts based on user-agent
+
+**Content Negotiation Evaluation:**
+This is increasingly important for AI agent experience. Evaluate whether the website:
+- Has an llms.txt or .well-known/llms.txt file for LLM-friendly documentation
+- Responds with pure markdown when Accept: text/markdown header is sent
+- Provides clean, structured text responses for AI agents
+- Has documentation endpoints that serve markdown directly
+- Adapts content format based on user-agent detection
 
 **Return JSON in this exact format:**
 {
@@ -162,20 +185,38 @@ AX measures how easily AI agents (like ChatGPT, Claude, Perplexity) can access, 
       "score": 65,
       "status": "good",
       "description": "Contact form available, but lacks AI-friendly structured interaction"
+    },
+    {
+      "name": "Content Negotiation",
+      "score": 30,
+      "status": "needs-improvement",
+      "description": "No content negotiation support detected. Does not serve markdown or agent-friendly formats."
     }
   ],
-  "agentAccessibility": "Overall, this website provides GOOD agent experience with clear content structure and semantic markup. Agents can understand the core product offering within seconds. However, adding structured APIs and an MCP server would significantly improve programmatic access. The site follows web standards well, making it easy for agents to parse and extract information. Consider adding JSON-LD structured data for richer agent understanding.",
+  "contentNegotiation": {
+    "supportsMarkdown": false,
+    "supportsAgentFriendlyFormat": false,
+    "hasLlmsTxt": false,
+    "acceptHeaderBehavior": "Returns HTML regardless of Accept header",
+    "score": 30,
+    "details": "The website does not implement content negotiation for AI agents. When an LLM visits this page, it receives standard HTML which must be parsed and converted. No llms.txt file detected. Recommendation: Implement content negotiation to serve pure markdown when agents request it via Accept: text/markdown header."
+  },
+  "agentAccessibility": "Overall, this website provides GOOD agent experience with clear content structure and semantic markup. However, it lacks content negotiation support which would allow AI agents to receive clean markdown instead of HTML. Agents can understand the core product offering but must parse HTML. The LLM was presented with standard HTML content, not pure markdown. Consider adding llms.txt and supporting Accept header content negotiation for better agent experience.",
   "recommendations": [
+    "Implement content negotiation to serve markdown when Accept: text/markdown header is present",
+    "Add an llms.txt or .well-known/llms.txt file with LLM-friendly documentation",
     "Add Schema.org Product or Service schema with JSON-LD for rich structured data",
     "Implement an MCP (Model Context Protocol) server endpoint for direct agent access",
     "Create a public API or RSS feed for programmatic content consumption",
-    "Add structured FAQs with Question schema markup for better agent comprehension",
-    "Improve semantic HTML with more descriptive ARIA labels and landmarks",
-    "Add a dedicated /api endpoint documentation page for agent developers"
+    "Add structured FAQs with Question schema markup for better agent comprehension"
   ]
 }
 
-**Important:** Since you cannot actually fetch the URL, use your knowledge about typical website patterns for this domain/type of product to provide realistic evaluation. Focus on what agents would typically need to understand the product effectively.`;
+**Important:**
+1. Since you cannot actually fetch the URL, use your knowledge about typical website patterns for this domain/type of product to provide realistic evaluation.
+2. In the agentAccessibility field, ALWAYS mention whether the LLM was presented with pure markdown or HTML content. This is critical for the evaluation.
+3. Content Negotiation is now an 8th factor that affects the overall AX score.
+4. For Content Negotiation, give higher scores (70+) only if the site actively supports agent-friendly formats.`;
 }
 
 /**

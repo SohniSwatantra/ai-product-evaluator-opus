@@ -57,6 +57,7 @@ export async function initDatabase() {
         ax_factors JSONB,
         agent_accessibility TEXT,
         ax_recommendations JSONB,
+        content_negotiation JSONB,
         sectioned_recommendations JSONB,
         website_snapshot JSONB,
         user_id TEXT,
@@ -96,6 +97,19 @@ export async function initDatabase() {
 
     await sql`
       CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON evaluation_jobs(created_at DESC)
+    `;
+
+    // Add content_negotiation column if it doesn't exist (migration for existing databases)
+    await sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'evaluations' AND column_name = 'content_negotiation'
+        ) THEN
+          ALTER TABLE evaluations ADD COLUMN content_negotiation JSONB;
+        END IF;
+      END $$;
     `;
 
     // Create showcase_evaluations table for landing page display
@@ -147,6 +161,7 @@ export async function saveEvaluation(evaluation: ProductEvaluation, userId?: str
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -173,6 +188,7 @@ export async function saveEvaluation(evaluation: ProductEvaluation, userId?: str
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.factors) : null},
         ${evaluation.agentExperience?.agentAccessibility || null},
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.recommendations) : null},
+        ${evaluation.agentExperience?.contentNegotiation ? JSON.stringify(evaluation.agentExperience.contentNegotiation) : null},
         ${evaluation.sectionedRecommendations ? JSON.stringify(evaluation.sectionedRecommendations) : null},
         ${evaluation.websiteSnapshot ? JSON.stringify(evaluation.websiteSnapshot) : null},
         ${userId || null},
@@ -219,6 +235,7 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -271,6 +288,10 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
           agentAccessibility: row.agent_accessibility || "",
           recommendations: row.ax_recommendations || [],
         };
+        // Add content negotiation if available (backward compatible)
+        if (row.content_negotiation) {
+          evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+        }
       }
 
       // Add section recommendations if available
@@ -320,6 +341,7 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -378,6 +400,10 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
         agentAccessibility: row.agent_accessibility || "",
         recommendations: row.ax_recommendations || [],
       };
+      // Add content negotiation if available (backward compatible)
+      if (row.content_negotiation) {
+        evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+      }
     }
 
     // Add section recommendations if available
@@ -467,6 +493,7 @@ export async function getEvaluationsByUserId(userId: string, limit: number = 50)
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -519,6 +546,10 @@ export async function getEvaluationsByUserId(userId: string, limit: number = 50)
           agentAccessibility: row.agent_accessibility || "",
           recommendations: row.ax_recommendations || [],
         };
+        // Add content negotiation if available (backward compatible)
+        if (row.content_negotiation) {
+          evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+        }
       }
 
       // Add section recommendations if available
@@ -1274,6 +1305,7 @@ export async function getShowcaseEvaluations(limit: number = 10): Promise<Produc
         e.ax_factors,
         e.agent_accessibility,
         e.ax_recommendations,
+        e.content_negotiation,
         e.sectioned_recommendations,
         e.website_snapshot,
         e.user_id,
@@ -1325,6 +1357,10 @@ export async function getShowcaseEvaluations(limit: number = 10): Promise<Produc
           agentAccessibility: row.agent_accessibility || "",
           recommendations: row.ax_recommendations || [],
         };
+        // Add content negotiation if available (backward compatible)
+        if (row.content_negotiation) {
+          evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+        }
       }
 
       if (row.sectioned_recommendations) {
