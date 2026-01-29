@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw, Star } from "lucide-react";
-import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult } from "@/types";
+import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw, Star, FileText, Globe } from "lucide-react";
+import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult, ContentNegotiation } from "@/types";
 import { AXScoreGauge } from "@/components/charts/ax-score-gauge";
 import { AXCouncilVisual } from "@/components/ax-council-visual";
 import { cn } from "@/lib/utils";
@@ -32,14 +32,15 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
   const [runningCouncil, setRunningCouncil] = useState(false);
 
   // Use the passed agentExperience as default/initial data
-  const { axScore, anps, factors, agentAccessibility, recommendations } =
+  const { axScore, anps, factors, agentAccessibility, recommendations, contentNegotiation } =
     selectedModelData?.status === 'completed' && selectedModelData.ax_score !== null
       ? {
           axScore: selectedModelData.ax_score,
           anps: selectedModelData.anps || 0,
           factors: selectedModelData.ax_factors || [],
           agentAccessibility: selectedModelData.agent_accessibility || "",
-          recommendations: selectedModelData.ax_recommendations || []
+          recommendations: selectedModelData.ax_recommendations || [],
+          contentNegotiation: undefined as ContentNegotiation | undefined
         }
       : councilResult
         ? {
@@ -47,9 +48,13 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
             anps: councilResult.final_anps,
             factors: agentExperience.factors,
             agentAccessibility: councilResult.council_analysis,
-            recommendations: agentExperience.recommendations
+            recommendations: agentExperience.recommendations,
+            contentNegotiation: agentExperience.contentNegotiation
           }
-        : agentExperience;
+        : {
+            ...agentExperience,
+            contentNegotiation: agentExperience.contentNegotiation
+          };
 
   // Fetch available models
   useEffect(() => {
@@ -411,7 +416,7 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       {factors && factors.length > 0 && (
         <div className="mb-8">
           <h4 className="text-lg font-semibold text-black dark:text-white mb-4">
-            7-Factor Agent Experience Analysis
+            {factors.length}-Factor Agent Experience Analysis
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {factors.map((factor) => (
@@ -441,6 +446,124 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Content Negotiation Section */}
+      {contentNegotiation && (
+        <div className="mb-8 p-4 sm:p-6 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-800">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 rounded-lg bg-blue-500/20">
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h4 className="text-lg font-semibold text-black dark:text-white">
+                Content Negotiation for Agents
+              </h4>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                How well does this site serve content to AI agents?
+              </p>
+            </div>
+            <div className="ml-auto">
+              <span className={cn(
+                "px-3 py-1 rounded-full text-sm font-semibold",
+                contentNegotiation.score >= 70 ? "bg-green-500/20 text-green-700 dark:text-green-400" :
+                contentNegotiation.score >= 40 ? "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400" :
+                "bg-red-500/20 text-red-700 dark:text-red-400"
+              )}>
+                {contentNegotiation.score}/100
+              </span>
+            </div>
+          </div>
+
+          {/* Content Negotiation Indicators */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className={cn(
+              "p-3 rounded-lg border",
+              contentNegotiation.supportsMarkdown
+                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                : "bg-neutral-50 dark:bg-neutral-900/20 border-neutral-200 dark:border-neutral-700"
+            )}>
+              <div className="flex items-center gap-2 mb-1">
+                {contentNegotiation.supportsMarkdown ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-neutral-400" />
+                )}
+                <span className="text-sm font-medium text-black dark:text-white">Markdown Support</span>
+              </div>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                {contentNegotiation.supportsMarkdown
+                  ? "Responds with pure markdown"
+                  : "No markdown content negotiation"}
+              </p>
+            </div>
+
+            <div className={cn(
+              "p-3 rounded-lg border",
+              contentNegotiation.hasLlmsTxt
+                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                : "bg-neutral-50 dark:bg-neutral-900/20 border-neutral-200 dark:border-neutral-700"
+            )}>
+              <div className="flex items-center gap-2 mb-1">
+                {contentNegotiation.hasLlmsTxt ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-neutral-400" />
+                )}
+                <span className="text-sm font-medium text-black dark:text-white">llms.txt</span>
+              </div>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                {contentNegotiation.hasLlmsTxt
+                  ? "Has LLM-friendly documentation"
+                  : "No llms.txt file detected"}
+              </p>
+            </div>
+
+            <div className={cn(
+              "p-3 rounded-lg border",
+              contentNegotiation.supportsAgentFriendlyFormat
+                ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                : "bg-neutral-50 dark:bg-neutral-900/20 border-neutral-200 dark:border-neutral-700"
+            )}>
+              <div className="flex items-center gap-2 mb-1">
+                {contentNegotiation.supportsAgentFriendlyFormat ? (
+                  <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-neutral-400" />
+                )}
+                <span className="text-sm font-medium text-black dark:text-white">Agent-Friendly</span>
+              </div>
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                {contentNegotiation.supportsAgentFriendlyFormat
+                  ? "Adapts content for AI agents"
+                  : "Standard HTML only"}
+              </p>
+            </div>
+          </div>
+
+          {/* Accept Header Behavior */}
+          <div className="p-3 rounded-lg bg-white/60 dark:bg-black/20 border border-blue-100 dark:border-blue-900 mb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium text-black dark:text-white">Accept Header Behavior</span>
+            </div>
+            <p className="text-sm text-neutral-700 dark:text-neutral-300">
+              {contentNegotiation.acceptHeaderBehavior}
+            </p>
+          </div>
+
+          {/* Details */}
+          {contentNegotiation.details && (
+            <div className="p-3 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                  {contentNegotiation.details}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
