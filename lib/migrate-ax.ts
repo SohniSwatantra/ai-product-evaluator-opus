@@ -4,10 +4,22 @@
 
 import { neon } from "@neondatabase/serverless";
 
-const sql = neon(process.env.DATABASE_URL || "");
+// Lazy initialize to avoid build-time errors when DATABASE_URL is not set
+let _sql: ReturnType<typeof neon> | null = null;
+const getSql = () => {
+  if (!_sql) {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      throw new Error("DATABASE_URL environment variable is not configured");
+    }
+    _sql = neon(url);
+  }
+  return _sql;
+};
 
 export async function migrateAXColumns() {
   try {
+    const sql = getSql();
     console.log("Starting AX columns migration...");
 
     // Add AX columns to existing evaluations table

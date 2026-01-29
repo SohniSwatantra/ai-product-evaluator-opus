@@ -92,6 +92,40 @@ const sql = async (...args) => {
     // Cast to array - tagged template queries always return row arrays
     return result;
 };
+// Track if database has been initialized (migrations run)
+let _dbInitialized = false;
+let _initPromise = null;
+/**
+ * Ensure database migrations have run (idempotent, runs once per process)
+ */
+async function ensureDbInitialized() {
+    if (_dbInitialized)
+        return;
+    if (_initPromise)
+        return _initPromise;
+    _initPromise = (async () => {
+        try {
+            // Only run the content_negotiation migration - fast and targeted
+            await sql `
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'evaluations' AND column_name = 'content_negotiation'
+          ) THEN
+            ALTER TABLE evaluations ADD COLUMN content_negotiation JSONB;
+          END IF;
+        END $$;
+      `;
+            _dbInitialized = true;
+        }
+        catch (error) {
+            _initPromise = null;
+            throw error;
+        }
+    })();
+    return _initPromise;
+}
 /**
  * Initialize database schema
  * Creates the evaluations table if it doesn't exist
@@ -123,6 +157,7 @@ async function initDatabase() {
         ax_factors JSONB,
         agent_accessibility TEXT,
         ax_recommendations JSONB,
+        content_negotiation JSONB,
         sectioned_recommendations JSONB,
         website_snapshot JSONB,
         user_id TEXT,
@@ -157,6 +192,18 @@ async function initDatabase() {
     `;
         await sql `
       CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON evaluation_jobs(created_at DESC)
+    `;
+        // Add content_negotiation column if it doesn't exist (migration for existing databases)
+        await sql `
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'evaluations' AND column_name = 'content_negotiation'
+        ) THEN
+          ALTER TABLE evaluations ADD COLUMN content_negotiation JSONB;
+        END IF;
+      END $$;
     `;
         // Create showcase_evaluations table for landing page display
         await sql `
@@ -205,6 +252,7 @@ async function saveEvaluation(evaluation, userId) {
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -231,6 +279,7 @@ async function saveEvaluation(evaluation, userId) {
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.factors) : null},
         ${evaluation.agentExperience?.agentAccessibility || null},
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.recommendations) : null},
+        ${evaluation.agentExperience?.contentNegotiation ? JSON.stringify(evaluation.agentExperience.contentNegotiation) : null},
         ${evaluation.sectionedRecommendations ? JSON.stringify(evaluation.sectionedRecommendations) : null},
         ${evaluation.websiteSnapshot ? JSON.stringify(evaluation.websiteSnapshot) : null},
         ${userId || null},
@@ -252,6 +301,7 @@ async function saveEvaluation(evaluation, userId) {
  */
 async function getAllEvaluations(limit = 50) {
     try {
+        await ensureDbInitialized();
         const results = await sql `
       SELECT
         id,
@@ -276,6 +326,7 @@ async function getAllEvaluations(limit = 50) {
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -325,6 +376,10 @@ async function getAllEvaluations(limit = 50) {
                     agentAccessibility: row.agent_accessibility || "",
                     recommendations: row.ax_recommendations || [],
                 };
+                // Add content negotiation if available (backward compatible)
+                if (row.content_negotiation) {
+                    evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+                }
             }
             // Add section recommendations if available
             if (row.sectioned_recommendations) {
@@ -347,6 +402,7 @@ async function getAllEvaluations(limit = 50) {
  */
 async function getEvaluationById(id) {
     try {
+        await ensureDbInitialized();
         const results = await sql `
       SELECT
         id,
@@ -371,6 +427,7 @@ async function getEvaluationById(id) {
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -424,6 +481,10 @@ async function getEvaluationById(id) {
                 agentAccessibility: row.agent_accessibility || "",
                 recommendations: row.ax_recommendations || [],
             };
+            // Add content negotiation if available (backward compatible)
+            if (row.content_negotiation) {
+                evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+            }
         }
         // Add section recommendations if available
         if (row.sectioned_recommendations) {
@@ -484,6 +545,7 @@ async function getEvaluationStats() {
  */
 async function getEvaluationsByUserId(userId, limit = 50) {
     try {
+        await ensureDbInitialized();
         const results = await sql `
       SELECT
         id,
@@ -508,6 +570,7 @@ async function getEvaluationsByUserId(userId, limit = 50) {
         ax_factors,
         agent_accessibility,
         ax_recommendations,
+        content_negotiation,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -557,6 +620,10 @@ async function getEvaluationsByUserId(userId, limit = 50) {
                     agentAccessibility: row.agent_accessibility || "",
                     recommendations: row.ax_recommendations || [],
                 };
+                // Add content negotiation if available (backward compatible)
+                if (row.content_negotiation) {
+                    evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+                }
             }
             // Add section recommendations if available
             if (row.sectioned_recommendations) {
@@ -1226,6 +1293,7 @@ async function getShowcaseEvaluationIds() {
  */
 async function getShowcaseEvaluations(limit = 10) {
     try {
+        await ensureDbInitialized();
         const results = await sql `
       SELECT
         e.id,
@@ -1250,6 +1318,7 @@ async function getShowcaseEvaluations(limit = 10) {
         e.ax_factors,
         e.agent_accessibility,
         e.ax_recommendations,
+        e.content_negotiation,
         e.sectioned_recommendations,
         e.website_snapshot,
         e.user_id,
@@ -1298,6 +1367,10 @@ async function getShowcaseEvaluations(limit = 10) {
                     agentAccessibility: row.agent_accessibility || "",
                     recommendations: row.ax_recommendations || [],
                 };
+                // Add content negotiation if available (backward compatible)
+                if (row.content_negotiation) {
+                    evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+                }
             }
             if (row.sectioned_recommendations) {
                 evaluation.sectionedRecommendations = row.sectioned_recommendations;

@@ -26,6 +26,41 @@ const sql = async (...args: Parameters<ReturnType<typeof neon>>): Promise<Record
   return result as Record<string, any>[];
 };
 
+// Track if database has been initialized (migrations run)
+let _dbInitialized = false;
+let _initPromise: Promise<void> | null = null;
+
+/**
+ * Ensure database migrations have run (idempotent, runs once per process)
+ */
+async function ensureDbInitialized(): Promise<void> {
+  if (_dbInitialized) return;
+  if (_initPromise) return _initPromise;
+
+  _initPromise = (async () => {
+    try {
+      // Only run the content_negotiation migration - fast and targeted
+      await sql`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'evaluations' AND column_name = 'content_negotiation'
+          ) THEN
+            ALTER TABLE evaluations ADD COLUMN content_negotiation JSONB;
+          END IF;
+        END $$;
+      `;
+      _dbInitialized = true;
+    } catch (error) {
+      _initPromise = null;
+      throw error;
+    }
+  })();
+
+  return _initPromise;
+}
+
 /**
  * Initialize database schema
  * Creates the evaluations table if it doesn't exist
@@ -211,6 +246,7 @@ export async function saveEvaluation(evaluation: ProductEvaluation, userId?: str
  */
 export async function getAllEvaluations(limit: number = 50): Promise<ProductEvaluation[]> {
   try {
+    await ensureDbInitialized();
     const results = await sql`
       SELECT
         id,
@@ -317,6 +353,7 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
  */
 export async function getEvaluationById(id: number): Promise<ProductEvaluation | null> {
   try {
+    await ensureDbInitialized();
     const results = await sql`
       SELECT
         id,
@@ -469,6 +506,7 @@ export async function getEvaluationStats() {
  */
 export async function getEvaluationsByUserId(userId: string, limit: number = 50): Promise<(ProductEvaluation & { id?: number })[]> {
   try {
+    await ensureDbInitialized();
     const results = await sql`
       SELECT
         id,
@@ -1281,6 +1319,7 @@ export async function getShowcaseEvaluationIds(): Promise<{ evaluationId: number
  */
 export async function getShowcaseEvaluations(limit: number = 10): Promise<ProductEvaluation[]> {
   try {
+    await ensureDbInitialized();
     const results = await sql`
       SELECT
         e.id,
