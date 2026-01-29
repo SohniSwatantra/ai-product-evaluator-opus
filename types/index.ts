@@ -45,12 +45,22 @@ export interface AXFactor {
   description: string;
 }
 
+export interface ContentNegotiation {
+  supportsMarkdown: boolean;
+  supportsAgentFriendlyFormat: boolean;
+  hasLlmsTxt: boolean;
+  acceptHeaderBehavior: string;
+  score: number;
+  details: string;
+}
+
 export interface AgentExperience {
   axScore: number;
   anps: number; // Agent Net Promoter Score (-100 to 100)
   factors: AXFactor[];
   agentAccessibility: string;
   recommendations: string[];
+  contentNegotiation?: ContentNegotiation; // New: Content negotiation support for agents
 }
 
 export interface SectionScreenshots {
