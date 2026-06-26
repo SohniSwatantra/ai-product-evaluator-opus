@@ -5,6 +5,7 @@
  * Evaluates how easily AI agents can access, understand, and interact with websites
  */
 
+import { jsonrepair } from "jsonrepair";
 import type {
   AgentExperience,
   AXFactor,
@@ -93,14 +94,10 @@ function extractJsonObject(response: string): any | null {
     // fall through to repair
   }
 
+  // jsonrepair handles the common LLM failures a regex can't: unescaped quotes
+  // inside string values, literal newlines, missing/trailing commas, etc.
   try {
-    const repaired = jsonStr
-      .replace(/[“”]/g, '"') // smart double quotes -> "
-      .replace(/[‘’]/g, "'") // smart single quotes -> '
-      .replace(/,(\s*[}\]])/g, "$1") // trailing commas before } or ]
-      .replace(/\r/g, "")
-      .replace(/\t/g, " ");
-    return JSON.parse(repaired);
+    return JSON.parse(jsonrepair(jsonStr));
   } catch (error) {
     console.error("Failed to repair agent experience JSON:", error);
     return null;

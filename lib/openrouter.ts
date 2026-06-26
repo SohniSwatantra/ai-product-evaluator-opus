@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 /**
  * OpenRouter API integration for multi-model AX evaluations
  */
@@ -167,14 +168,8 @@ export function parseAXResponse(response: string): {
     try {
       parsed = JSON.parse(jsonStr);
     } catch {
-      parsed = JSON.parse(
-        jsonStr
-          .replace(/[“”]/g, '"')
-          .replace(/[‘’]/g, "'")
-          .replace(/,(\s*[}\]])/g, "$1")
-          .replace(/\r/g, "")
-          .replace(/\t/g, " ")
-      );
+      // jsonrepair fixes unescaped inner quotes, literal newlines, trailing commas, etc.
+      parsed = JSON.parse(jsonrepair(jsonStr));
     }
 
     // Calculate ANPS from AX score

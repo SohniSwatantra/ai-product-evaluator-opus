@@ -15,6 +15,7 @@ exports.applyMeasuredSignals = applyMeasuredSignals;
 exports.createAXEvaluationPrompt = createAXEvaluationPrompt;
 exports.getProviderColor = getProviderColor;
 exports.getProviderFromModel = getProviderFromModel;
+const jsonrepair_1 = require("jsonrepair");
 /**
  * Calculate AX Score and ANPS from evaluation data
  * This would typically involve analyzing the website's structure, but since we can't
@@ -94,14 +95,10 @@ function extractJsonObject(response) {
     catch {
         // fall through to repair
     }
+    // jsonrepair handles the common LLM failures a regex can't: unescaped quotes
+    // inside string values, literal newlines, missing/trailing commas, etc.
     try {
-        const repaired = jsonStr
-            .replace(/[“”]/g, '"') // smart double quotes -> "
-            .replace(/[‘’]/g, "'") // smart single quotes -> '
-            .replace(/,(\s*[}\]])/g, "$1") // trailing commas before } or ]
-            .replace(/\r/g, "")
-            .replace(/\t/g, " ");
-        return JSON.parse(repaired);
+        return JSON.parse((0, jsonrepair_1.jsonrepair)(jsonStr));
     }
     catch (error) {
         console.error("Failed to repair agent experience JSON:", error);
