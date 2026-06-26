@@ -7,6 +7,7 @@ exports.initDatabase = initDatabase;
 exports.saveEvaluation = saveEvaluation;
 exports.getAllEvaluations = getAllEvaluations;
 exports.getEvaluationById = getEvaluationById;
+exports.getEvaluationHistoryByUrl = getEvaluationHistoryByUrl;
 exports.deleteEvaluation = deleteEvaluation;
 exports.getEvaluationStats = getEvaluationStats;
 exports.getEvaluationsByUserId = getEvaluationsByUserId;
@@ -72,7 +73,13 @@ exports.updateDiscountCode = updateDiscountCode;
 exports.deleteDiscountCode = deleteDiscountCode;
 exports.getDiscountUsages = getDiscountUsages;
 exports.getDiscountStats = getDiscountStats;
+exports.initApiKeyTables = initApiKeyTables;
+exports.createApiKey = createApiKey;
+exports.validateApiKey = validateApiKey;
+exports.listApiKeys = listApiKeys;
+exports.revokeApiKey = revokeApiKey;
 const serverless_1 = require("@neondatabase/serverless");
+const crypto_1 = require("crypto");
 // Initialize Neon client
 const getDatabaseUrl = () => {
     const url = process.env.DATABASE_URL;
@@ -117,6 +124,18 @@ async function ensureDbInitialized() {
           END IF;
         END $$;
       `;
+            // Tier 1: measured agent-readiness signals
+            await sql `
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'evaluations' AND column_name = 'measured_signals'
+          ) THEN
+            ALTER TABLE evaluations ADD COLUMN measured_signals JSONB;
+          END IF;
+        END $$;
+      `;
             _dbInitialized = true;
         }
         catch (error) {
@@ -158,6 +177,7 @@ async function initDatabase() {
         agent_accessibility TEXT,
         ax_recommendations JSONB,
         content_negotiation JSONB,
+        measured_signals JSONB,
         sectioned_recommendations JSONB,
         website_snapshot JSONB,
         user_id TEXT,
@@ -202,6 +222,18 @@ async function initDatabase() {
           WHERE table_name = 'evaluations' AND column_name = 'content_negotiation'
         ) THEN
           ALTER TABLE evaluations ADD COLUMN content_negotiation JSONB;
+        END IF;
+      END $$;
+    `;
+        // Add measured_signals column if it doesn't exist (Tier 1 migration)
+        await sql `
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'evaluations' AND column_name = 'measured_signals'
+        ) THEN
+          ALTER TABLE evaluations ADD COLUMN measured_signals JSONB;
         END IF;
       END $$;
     `;
@@ -253,6 +285,7 @@ async function saveEvaluation(evaluation, userId) {
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -280,6 +313,7 @@ async function saveEvaluation(evaluation, userId) {
         ${evaluation.agentExperience?.agentAccessibility || null},
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.recommendations) : null},
         ${evaluation.agentExperience?.contentNegotiation ? JSON.stringify(evaluation.agentExperience.contentNegotiation) : null},
+        ${evaluation.agentExperience?.measuredSignals ? JSON.stringify(evaluation.agentExperience.measuredSignals) : null},
         ${evaluation.sectionedRecommendations ? JSON.stringify(evaluation.sectionedRecommendations) : null},
         ${evaluation.websiteSnapshot ? JSON.stringify(evaluation.websiteSnapshot) : null},
         ${userId || null},
@@ -327,6 +361,7 @@ async function getAllEvaluations(limit = 50) {
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -380,6 +415,11 @@ async function getAllEvaluations(limit = 50) {
                 if (row.content_negotiation) {
                     evaluation.agentExperience.contentNegotiation = row.content_negotiation;
                 }
+                // Add measured signals if available (Tier 1)
+                if (row.measured_signals) {
+                    evaluation.agentExperience.measuredSignals = row.measured_signals;
+                    evaluation.agentExperience.scoreBasis = "measured";
+                }
             }
             // Add section recommendations if available
             if (row.sectioned_recommendations) {
@@ -428,6 +468,7 @@ async function getEvaluationById(id) {
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -485,6 +526,11 @@ async function getEvaluationById(id) {
             if (row.content_negotiation) {
                 evaluation.agentExperience.contentNegotiation = row.content_negotiation;
             }
+            // Add measured signals if available (Tier 1)
+            if (row.measured_signals) {
+                evaluation.agentExperience.measuredSignals = row.measured_signals;
+                evaluation.agentExperience.scoreBasis = "measured";
+            }
         }
         // Add section recommendations if available
         if (row.sectioned_recommendations) {
@@ -500,6 +546,28 @@ async function getEvaluationById(id) {
         console.error("Error fetching evaluation by ID:", error);
         throw error;
     }
+}
+async function getEvaluationHistoryByUrl(url, limit = 50) {
+    await ensureDbInitialized();
+    const rows = await sql `
+    SELECT id, url, overall_score, buying_intent_probability,
+           ssr_score, ax_score, anps, measured_signals, timestamp
+    FROM evaluations
+    WHERE url = ${url}
+    ORDER BY timestamp ASC
+    LIMIT ${limit}
+  `;
+    return rows.map((row) => ({
+        id: row.id,
+        url: row.url,
+        overallScore: row.overall_score,
+        buyingIntentProbability: row.buying_intent_probability,
+        ssrScore: row.ssr_score ?? null,
+        axScore: row.ax_score ?? null,
+        anps: row.anps ?? null,
+        scoreBasis: row.measured_signals ? "measured" : "estimated",
+        timestamp: row.timestamp,
+    }));
 }
 /**
  * Delete an evaluation by ID
@@ -571,6 +639,7 @@ async function getEvaluationsByUserId(userId, limit = 50) {
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -623,6 +692,11 @@ async function getEvaluationsByUserId(userId, limit = 50) {
                 // Add content negotiation if available (backward compatible)
                 if (row.content_negotiation) {
                     evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+                }
+                // Add measured signals if available (Tier 1)
+                if (row.measured_signals) {
+                    evaluation.agentExperience.measuredSignals = row.measured_signals;
+                    evaluation.agentExperience.scoreBasis = "measured";
                 }
             }
             // Add section recommendations if available
@@ -1319,6 +1393,7 @@ async function getShowcaseEvaluations(limit = 10) {
         e.agent_accessibility,
         e.ax_recommendations,
         e.content_negotiation,
+        e.measured_signals,
         e.sectioned_recommendations,
         e.website_snapshot,
         e.user_id,
@@ -1370,6 +1445,11 @@ async function getShowcaseEvaluations(limit = 10) {
                 // Add content negotiation if available (backward compatible)
                 if (row.content_negotiation) {
                     evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+                }
+                // Add measured signals if available (Tier 1)
+                if (row.measured_signals) {
+                    evaluation.agentExperience.measuredSignals = row.measured_signals;
+                    evaluation.agentExperience.scoreBasis = "measured";
                 }
             }
             if (row.sectioned_recommendations) {
@@ -2359,4 +2439,75 @@ async function getDiscountStats() {
         console.error("Error fetching discount stats:", error);
         throw error;
     }
+}
+async function initApiKeyTables() {
+    await sql `
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT 'API Key',
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMP,
+      revoked BOOLEAN NOT NULL DEFAULT FALSE
+    )
+  `;
+    await sql `CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id)`;
+    await sql `CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`;
+}
+function hashApiKey(key) {
+    return (0, crypto_1.createHash)("sha256").update(key).digest("hex");
+}
+/**
+ * Create a new API key. Returns the FULL plaintext key exactly once —
+ * only its hash is stored, so it can never be retrieved again.
+ */
+async function createApiKey(userId, name = "API Key") {
+    await initApiKeyTables();
+    const secret = (0, crypto_1.randomBytes)(24).toString("hex");
+    const key = `axk_${secret}`;
+    const prefix = key.slice(0, 12); // axk_ + 8 chars, safe to display
+    const hash = hashApiKey(key);
+    const rows = await sql `
+    INSERT INTO api_keys (user_id, name, key_hash, key_prefix)
+    VALUES (${userId}, ${name}, ${hash}, ${prefix})
+    RETURNING id, user_id, name, key_prefix, created_at, last_used_at, revoked
+  `;
+    return { key, record: rows[0] };
+}
+/** Validate a plaintext API key. Returns the owning userId or null. Updates last_used_at. */
+async function validateApiKey(key) {
+    if (!key || !key.startsWith("axk_"))
+        return null;
+    await initApiKeyTables();
+    const hash = hashApiKey(key);
+    const rows = await sql `
+    SELECT id, user_id FROM api_keys
+    WHERE key_hash = ${hash} AND revoked = FALSE
+    LIMIT 1
+  `;
+    if (rows.length === 0)
+        return null;
+    await sql `UPDATE api_keys SET last_used_at = NOW() WHERE id = ${rows[0].id}`;
+    return { userId: rows[0].user_id, keyId: rows[0].id };
+}
+async function listApiKeys(userId) {
+    await initApiKeyTables();
+    const rows = await sql `
+    SELECT id, user_id, name, key_prefix, created_at, last_used_at, revoked
+    FROM api_keys
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+    return rows;
+}
+async function revokeApiKey(userId, keyId) {
+    await initApiKeyTables();
+    const rows = await sql `
+    UPDATE api_keys SET revoked = TRUE
+    WHERE id = ${keyId} AND user_id = ${userId}
+    RETURNING id
+  `;
+    return rows.length > 0;
 }

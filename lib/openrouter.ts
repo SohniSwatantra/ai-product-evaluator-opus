@@ -85,7 +85,8 @@ export function createAXEvaluationPrompt(
     productName?: string;
     description?: string;
     keyFeatures?: string[];
-  }
+  },
+  measuredSummary?: string
 ): string {
   const productInfo = websiteSnapshot ? `
 Product Name: ${websiteSnapshot.productName || 'Unknown'}
@@ -97,8 +98,8 @@ Key Features: ${websiteSnapshot.keyFeatures?.join(', ') || 'Not available'}
 
 Website URL: ${url}
 ${productInfo}
-
-Evaluate the website on these 7 factors, scoring each from 0-100:
+${measuredSummary ? `\n${measuredSummary}\n` : ''}
+Evaluate the website on these 8 factors, scoring each from 0-100:
 
 1. **Structured Data** - Presence of Schema.org markup, JSON-LD, Open Graph tags, and other machine-readable metadata
 2. **Semantic HTML** - Proper heading hierarchy, ARIA labels, semantic elements (nav, main, article, etc.)
@@ -107,12 +108,13 @@ Evaluate the website on these 7 factors, scoring each from 0-100:
 5. **API Availability** - Availability of REST/GraphQL APIs, MCP servers, or other programmatic access methods
 6. **Content Clarity** - How clear and unambiguous the value proposition and product information is for AI parsing
 7. **Agent Interaction** - Presence of chat widgets, structured FAQs, forms that AI could potentially interact with
+8. **Content Negotiation** - llms.txt / .well-known/llms.txt presence, markdown responses to Accept: text/markdown, AGENTS.md, and other agent-native formats
 
 For each factor, provide:
 - A score (0-100)
 - A status: "excellent" (70-100), "good" (40-69), or "needs-improvement" (0-39)
 - A brief description of your findings
-
+${measuredSummary ? '\nWhere MEASURED SIGNALS are provided above, use them as ground truth and do not contradict them.\n' : ''}
 Also provide:
 - An overall AX Score (weighted average)
 - Agent accessibility analysis (2-3 sentences describing how accessible this site is to AI agents)
@@ -128,7 +130,7 @@ Respond in this exact JSON format:
       "status": "<excellent|good|needs-improvement>",
       "description": "<brief description>"
     },
-    ... (all 7 factors)
+    ... (all 8 factors)
   ],
   "agentAccessibility": "<2-3 sentences>",
   "recommendations": ["<recommendation 1>", "<recommendation 2>", ...]

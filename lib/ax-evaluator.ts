@@ -5,7 +5,13 @@
  * Evaluates how easily AI agents can access, understand, and interact with websites
  */
 
-import type { AgentExperience, AXFactor, ContentNegotiation } from "@/types";
+import type {
+  AgentExperience,
+  AXFactor,
+  ContentNegotiation,
+  MeasuredSignals,
+  MeasuredFactorScores,
+} from "@/types";
 
 /**
  * Calculate AX Score and ANPS from evaluation data
@@ -110,9 +116,75 @@ export function parseAgentExperience(response: string): AgentExperience | null {
 }
 
 /**
- * Create AX evaluation prompt for Claude
+ * Map a measured factor name to its measured score (Tier 1).
+ * The four factors below are the ones we can verify with real HTTP checks.
  */
-export function createAXEvaluationPrompt(productUrl: string): string {
+const MEASURED_FACTOR_KEYS: Record<string, keyof MeasuredFactorScores> = {
+  "Structured Data": "structuredData",
+  "Content Accessibility": "contentAccessibility",
+  "Content Negotiation": "contentNegotiation",
+  "API Availability": "apiAvailability",
+};
+
+/**
+ * Override the LLM's guessed scores for the verifiable factors with MEASURED
+ * scores, then recompute the overall AX score and ANPS. Attaches the raw
+ * signals and marks the evaluation as measured.
+ */
+export function applyMeasuredSignals(
+  ax: AgentExperience,
+  measured: MeasuredFactorScores,
+  signals: MeasuredSignals
+): AgentExperience {
+  const factors = ax.factors.map((factor) => {
+    const key = MEASURED_FACTOR_KEYS[factor.name];
+    if (!key) return factor;
+    const score = measured[key];
+    return {
+      ...factor,
+      score,
+      status: getFactorStatus(score),
+      description: `[measured] ${factor.description}`,
+    };
+  });
+
+  const { axScore, anps } = calculateAXScore(factors);
+
+  // Keep the structured contentNegotiation block consistent with the probe.
+  const contentNegotiation: ContentNegotiation = {
+    supportsMarkdown: signals.contentNegotiation.supportsMarkdown,
+    supportsAgentFriendlyFormat:
+      signals.contentNegotiation.supportsMarkdown ||
+      signals.contentNegotiation.supportsPlainText ||
+      signals.llmsTxt.present,
+    hasLlmsTxt: signals.llmsTxt.present,
+    acceptHeaderBehavior:
+      signals.contentNegotiation.markdownContentType ||
+      "No markdown representation served",
+    score: measured.contentNegotiation,
+    details: `Measured via HTTP: llms.txt=${signals.llmsTxt.present}, markdown negotiation=${signals.contentNegotiation.supportsMarkdown}, AGENTS.md=${signals.agentsMd.present}.`,
+  };
+
+  return {
+    ...ax,
+    factors,
+    axScore,
+    anps,
+    contentNegotiation,
+    measuredSignals: signals,
+    scoreBasis: "measured",
+  };
+}
+
+/**
+ * Create AX evaluation prompt for Claude.
+ * When `measuredSummary` is provided (Tier 1), the model is told the verified
+ * facts and instructed not to contradict them, instead of guessing.
+ */
+export function createAXEvaluationPrompt(
+  productUrl: string,
+  measuredSummary?: string
+): string {
   return `Evaluate the Agent Experience (AX) of this website: ${productUrl}
 
 **What is Agent Experience (AX)?**
@@ -212,10 +284,13 @@ This is increasingly important for AI agent experience. Evaluate whether the web
   ]
 }
 
+${measuredSummary ? `\n${measuredSummary}\n` : ""}
 **Important:**
-1. Since you cannot actually fetch the URL, use your knowledge about typical website patterns for this domain/type of product to provide realistic evaluation.
+1. ${measuredSummary
+      ? "The MEASURED SIGNALS above were verified with real HTTP requests. The scores for Structured Data, Content Accessibility, Content Negotiation, and API Availability will be replaced by the measured values, so focus your scoring effort on Semantic HTML, Meta Tags Quality, Content Clarity, and Agent Interaction. Never claim a file exists if the measured signals say it does not."
+      : "Since you cannot actually fetch the URL, use your knowledge about typical website patterns for this domain/type of product to provide realistic evaluation."}
 2. In the agentAccessibility field, ALWAYS mention whether the LLM was presented with pure markdown or HTML content. This is critical for the evaluation.
-3. Content Negotiation is now an 8th factor that affects the overall AX score.
+3. Content Negotiation is an 8th factor that affects the overall AX score.
 4. For Content Negotiation, give higher scores (70+) only if the site actively supports agent-friendly formats.`;
 }
 

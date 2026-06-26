@@ -54,6 +54,48 @@ export interface ContentNegotiation {
   details: string;
 }
 
+// Tier 1: Measured agent-readiness signals (real HTTP checks, not LLM guesses)
+export interface RobotsAgentRule {
+  userAgent: string;
+  disallowed: boolean; // blocked from the whole site (Disallow: /)
+}
+
+export interface MeasuredSignals {
+  checkedAt: string;
+  origin: string;
+  llmsTxt: { present: boolean; url: string; bytes: number };
+  llmsFullTxt: { present: boolean; bytes: number };
+  wellKnownLlmsTxt: { present: boolean };
+  agentsMd: { present: boolean; bytes: number };
+  robotsTxt: {
+    present: boolean;
+    allowsAiAgents: boolean;
+    agentRules: RobotsAgentRule[];
+    hasSitemapDirective: boolean;
+  };
+  sitemapXml: { present: boolean };
+  contentNegotiation: {
+    supportsMarkdown: boolean;
+    supportsPlainText: boolean;
+    markdownContentType: string | null;
+    htmlContentType: string | null;
+  };
+  structuredData: {
+    jsonLdBlocks: number;
+    schemaTypes: string[];
+    hasOpenGraph: boolean;
+  };
+  apiSurface: { hasOpenApi: boolean; hasWellKnown: boolean };
+  errors: string[];
+}
+
+export interface MeasuredFactorScores {
+  structuredData: number;
+  contentAccessibility: number;
+  contentNegotiation: number;
+  apiAvailability: number;
+}
+
 export interface AgentExperience {
   axScore: number;
   anps: number; // Agent Net Promoter Score (-100 to 100)
@@ -61,6 +103,8 @@ export interface AgentExperience {
   agentAccessibility: string;
   recommendations: string[];
   contentNegotiation?: ContentNegotiation; // New: Content negotiation support for agents
+  measuredSignals?: MeasuredSignals; // Tier 1: real probe results backing the scores
+  scoreBasis?: "measured" | "estimated"; // whether measured signals were applied
 }
 
 export interface SectionScreenshots {

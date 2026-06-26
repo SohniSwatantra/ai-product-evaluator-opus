@@ -3,6 +3,7 @@
  */
 
 import { neon } from "@neondatabase/serverless";
+import { createHash, randomBytes } from "crypto";
 import type { ProductEvaluation, AXModelConfig, AXModelEvaluation, AXCouncilResult } from "@/types";
 
 // Initialize Neon client
@@ -51,6 +52,18 @@ async function ensureDbInitialized(): Promise<void> {
           END IF;
         END $$;
       `;
+      // Tier 1: measured agent-readiness signals
+      await sql`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_name = 'evaluations' AND column_name = 'measured_signals'
+          ) THEN
+            ALTER TABLE evaluations ADD COLUMN measured_signals JSONB;
+          END IF;
+        END $$;
+      `;
       _dbInitialized = true;
     } catch (error) {
       _initPromise = null;
@@ -93,6 +106,7 @@ export async function initDatabase() {
         agent_accessibility TEXT,
         ax_recommendations JSONB,
         content_negotiation JSONB,
+        measured_signals JSONB,
         sectioned_recommendations JSONB,
         website_snapshot JSONB,
         user_id TEXT,
@@ -147,6 +161,19 @@ export async function initDatabase() {
       END $$;
     `;
 
+    // Add measured_signals column if it doesn't exist (Tier 1 migration)
+    await sql`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'evaluations' AND column_name = 'measured_signals'
+        ) THEN
+          ALTER TABLE evaluations ADD COLUMN measured_signals JSONB;
+        END IF;
+      END $$;
+    `;
+
     // Create showcase_evaluations table for landing page display
     await sql`
       CREATE TABLE IF NOT EXISTS showcase_evaluations (
@@ -197,6 +224,7 @@ export async function saveEvaluation(evaluation: ProductEvaluation, userId?: str
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -224,6 +252,7 @@ export async function saveEvaluation(evaluation: ProductEvaluation, userId?: str
         ${evaluation.agentExperience?.agentAccessibility || null},
         ${evaluation.agentExperience ? JSON.stringify(evaluation.agentExperience.recommendations) : null},
         ${evaluation.agentExperience?.contentNegotiation ? JSON.stringify(evaluation.agentExperience.contentNegotiation) : null},
+        ${evaluation.agentExperience?.measuredSignals ? JSON.stringify(evaluation.agentExperience.measuredSignals) : null},
         ${evaluation.sectionedRecommendations ? JSON.stringify(evaluation.sectionedRecommendations) : null},
         ${evaluation.websiteSnapshot ? JSON.stringify(evaluation.websiteSnapshot) : null},
         ${userId || null},
@@ -272,6 +301,7 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -328,6 +358,11 @@ export async function getAllEvaluations(limit: number = 50): Promise<ProductEval
         if (row.content_negotiation) {
           evaluation.agentExperience.contentNegotiation = row.content_negotiation;
         }
+        // Add measured signals if available (Tier 1)
+        if (row.measured_signals) {
+          evaluation.agentExperience.measuredSignals = row.measured_signals;
+          evaluation.agentExperience.scoreBasis = "measured";
+        }
       }
 
       // Add section recommendations if available
@@ -379,6 +414,7 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         user_id,
@@ -441,6 +477,11 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
       if (row.content_negotiation) {
         evaluation.agentExperience.contentNegotiation = row.content_negotiation;
       }
+      // Add measured signals if available (Tier 1)
+      if (row.measured_signals) {
+        evaluation.agentExperience.measuredSignals = row.measured_signals;
+        evaluation.agentExperience.scoreBasis = "measured";
+      }
     }
 
     // Add section recommendations if available
@@ -458,6 +499,48 @@ export async function getEvaluationById(id: number): Promise<ProductEvaluation |
     console.error("Error fetching evaluation by ID:", error);
     throw error;
   }
+}
+
+/**
+ * Tier 2: Lightweight score history for a URL over time (regression tracking).
+ * Returns rows oldest-first so a trend line can be drawn directly.
+ */
+export interface EvaluationHistoryPoint {
+  id: number;
+  url: string;
+  overallScore: number;
+  buyingIntentProbability: number;
+  ssrScore: number | null;
+  axScore: number | null;
+  anps: number | null;
+  scoreBasis: "measured" | "estimated" | null;
+  timestamp: string;
+}
+
+export async function getEvaluationHistoryByUrl(
+  url: string,
+  limit: number = 50
+): Promise<EvaluationHistoryPoint[]> {
+  await ensureDbInitialized();
+  const rows = await sql`
+    SELECT id, url, overall_score, buying_intent_probability,
+           ssr_score, ax_score, anps, measured_signals, timestamp
+    FROM evaluations
+    WHERE url = ${url}
+    ORDER BY timestamp ASC
+    LIMIT ${limit}
+  `;
+  return rows.map((row: any) => ({
+    id: row.id,
+    url: row.url,
+    overallScore: row.overall_score,
+    buyingIntentProbability: row.buying_intent_probability,
+    ssrScore: row.ssr_score ?? null,
+    axScore: row.ax_score ?? null,
+    anps: row.anps ?? null,
+    scoreBasis: row.measured_signals ? "measured" : "estimated",
+    timestamp: row.timestamp,
+  }));
 }
 
 /**
@@ -532,6 +615,7 @@ export async function getEvaluationsByUserId(userId: string, limit: number = 50)
         agent_accessibility,
         ax_recommendations,
         content_negotiation,
+        measured_signals,
         sectioned_recommendations,
         website_snapshot,
         timestamp
@@ -587,6 +671,11 @@ export async function getEvaluationsByUserId(userId: string, limit: number = 50)
         // Add content negotiation if available (backward compatible)
         if (row.content_negotiation) {
           evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+        }
+        // Add measured signals if available (Tier 1)
+        if (row.measured_signals) {
+          evaluation.agentExperience.measuredSignals = row.measured_signals;
+          evaluation.agentExperience.scoreBasis = "measured";
         }
       }
 
@@ -1345,6 +1434,7 @@ export async function getShowcaseEvaluations(limit: number = 10): Promise<Produc
         e.agent_accessibility,
         e.ax_recommendations,
         e.content_negotiation,
+        e.measured_signals,
         e.sectioned_recommendations,
         e.website_snapshot,
         e.user_id,
@@ -1399,6 +1489,11 @@ export async function getShowcaseEvaluations(limit: number = 10): Promise<Produc
         // Add content negotiation if available (backward compatible)
         if (row.content_negotiation) {
           evaluation.agentExperience.contentNegotiation = row.content_negotiation;
+        }
+        // Add measured signals if available (Tier 1)
+        if (row.measured_signals) {
+          evaluation.agentExperience.measuredSignals = row.measured_signals;
+          evaluation.agentExperience.scoreBasis = "measured";
         }
       }
 
@@ -2605,4 +2700,97 @@ export async function getDiscountStats(): Promise<{
     console.error("Error fetching discount stats:", error);
     throw error;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tier 3: API Keys for the public scoring API + CI gating
+// ---------------------------------------------------------------------------
+
+export interface ApiKeyRecord {
+  id: number;
+  user_id: string;
+  name: string;
+  key_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked: boolean;
+}
+
+export async function initApiKeyTables(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id SERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL DEFAULT 'API Key',
+      key_hash TEXT NOT NULL UNIQUE,
+      key_prefix TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      last_used_at TIMESTAMP,
+      revoked BOOLEAN NOT NULL DEFAULT FALSE
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_user_id ON api_keys(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_keys_hash ON api_keys(key_hash)`;
+}
+
+function hashApiKey(key: string): string {
+  return createHash("sha256").update(key).digest("hex");
+}
+
+/**
+ * Create a new API key. Returns the FULL plaintext key exactly once —
+ * only its hash is stored, so it can never be retrieved again.
+ */
+export async function createApiKey(
+  userId: string,
+  name: string = "API Key"
+): Promise<{ key: string; record: ApiKeyRecord }> {
+  await initApiKeyTables();
+  const secret = randomBytes(24).toString("hex");
+  const key = `axk_${secret}`;
+  const prefix = key.slice(0, 12); // axk_ + 8 chars, safe to display
+  const hash = hashApiKey(key);
+
+  const rows = await sql`
+    INSERT INTO api_keys (user_id, name, key_hash, key_prefix)
+    VALUES (${userId}, ${name}, ${hash}, ${prefix})
+    RETURNING id, user_id, name, key_prefix, created_at, last_used_at, revoked
+  `;
+  return { key, record: rows[0] as ApiKeyRecord };
+}
+
+/** Validate a plaintext API key. Returns the owning userId or null. Updates last_used_at. */
+export async function validateApiKey(key: string): Promise<{ userId: string; keyId: number } | null> {
+  if (!key || !key.startsWith("axk_")) return null;
+  await initApiKeyTables();
+  const hash = hashApiKey(key);
+  const rows = await sql`
+    SELECT id, user_id FROM api_keys
+    WHERE key_hash = ${hash} AND revoked = FALSE
+    LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  await sql`UPDATE api_keys SET last_used_at = NOW() WHERE id = ${rows[0].id}`;
+  return { userId: rows[0].user_id, keyId: rows[0].id };
+}
+
+export async function listApiKeys(userId: string): Promise<ApiKeyRecord[]> {
+  await initApiKeyTables();
+  const rows = await sql`
+    SELECT id, user_id, name, key_prefix, created_at, last_used_at, revoked
+    FROM api_keys
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+  `;
+  return rows as ApiKeyRecord[];
+}
+
+export async function revokeApiKey(userId: string, keyId: number): Promise<boolean> {
+  await initApiKeyTables();
+  const rows = await sql`
+    UPDATE api_keys SET revoked = TRUE
+    WHERE id = ${keyId} AND user_id = ${userId}
+    RETURNING id
+  `;
+  return rows.length > 0;
 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Bot, CheckCircle2, AlertCircle, XCircle, Info, Play, Loader2, Users, RefreshCw, Star, FileText, Globe } from "lucide-react";
-import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult, ContentNegotiation } from "@/types";
+import type { AgentExperience, AXModelConfig, AXModelEvaluation, AXCouncilResult, ContentNegotiation, MeasuredSignals } from "@/types";
 import { AXScoreGauge } from "@/components/charts/ax-score-gauge";
 import { AXCouncilVisual } from "@/components/ax-council-visual";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,37 @@ interface ModelTabStatus {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   ax_score: number | null;
   anps: number | null;
+}
+
+/** Compact row of green/red chips showing the verified agent-readiness signals (Tier 1). */
+function MeasuredSignalsChips({ signals }: { signals: MeasuredSignals }) {
+  const chips: { label: string; ok: boolean }[] = [
+    { label: "llms.txt", ok: signals.llmsTxt.present },
+    { label: "robots allows agents", ok: signals.robotsTxt.present && signals.robotsTxt.allowsAiAgents },
+    { label: "sitemap.xml", ok: signals.sitemapXml.present || signals.robotsTxt.hasSitemapDirective },
+    { label: "markdown negotiation", ok: signals.contentNegotiation.supportsMarkdown },
+    { label: `JSON-LD${signals.structuredData.jsonLdBlocks ? ` (${signals.structuredData.jsonLdBlocks})` : ""}`, ok: signals.structuredData.jsonLdBlocks > 0 },
+    { label: "AGENTS.md", ok: signals.agentsMd.present },
+    { label: "OpenAPI", ok: signals.apiSurface.hasOpenApi },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1 mb-1">
+      {chips.map((c) => (
+        <span
+          key={c.label}
+          className={cn(
+            "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] border",
+            c.ok
+              ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-900"
+              : "bg-neutral-100 text-neutral-500 border-neutral-200 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700"
+          )}
+        >
+          {c.ok ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function AgentExperienceSection({ agentExperience, evaluationId, isShowcase = false }: AgentExperienceSectionProps) {
@@ -225,9 +256,23 @@ export function AgentExperienceSection({ agentExperience, evaluationId, isShowca
       <div className="flex items-start gap-2 sm:gap-3 mb-6">
         <Bot className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-1" />
         <div className="flex-1">
-          <h3 className="text-xl sm:text-2xl font-semibold text-black dark:text-white mb-2">
-            Agent Experience (AX)
-          </h3>
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            <h3 className="text-xl sm:text-2xl font-semibold text-black dark:text-white">
+              Agent Experience (AX)
+            </h3>
+            {agentExperience.scoreBasis === "measured" ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border border-green-300 dark:border-green-800">
+                <CheckCircle2 className="w-3 h-3" /> Measured
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                <Info className="w-3 h-3" /> Estimated
+              </span>
+            )}
+          </div>
+          {agentExperience.measuredSignals && (
+            <MeasuredSignalsChips signals={agentExperience.measuredSignals} />
+          )}
           <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-purple-100 dark:bg-purple-900/40 border border-purple-200 dark:border-purple-800">
             <Info className="w-4 h-4 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs sm:text-sm text-purple-900 dark:text-purple-200">

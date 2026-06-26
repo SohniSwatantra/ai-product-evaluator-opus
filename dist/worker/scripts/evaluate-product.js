@@ -21,6 +21,7 @@ const path_1 = __importDefault(require("path"));
 const promises_1 = require("fs/promises");
 const ssr_calculator_1 = require("../lib/ssr-calculator");
 const ax_evaluator_1 = require("../lib/ax-evaluator");
+const ax_probe_1 = require("../lib/ax-probe");
 const web_scraper_1 = require("../lib/web-scraper");
 const db_1 = require("../lib/db");
 // ---------------------------------------------------------------------------
@@ -346,7 +347,7 @@ ${scrapedDataAppendix}
     console.log("🔄 Running parallel analyses (SSR, AX, Section Recommendations)...");
     await Promise.all([
         enrichWithSSRAnalysis(evaluation, validatedUrl, demographicDescription),
-        enrichWithAXAnalysis(evaluation, validatedUrl),
+        enrichWithAXAnalysis(evaluation, validatedUrl, scrapedData),
         enrichWithSectionRecommendations(evaluation, validatedUrl, demographicDescription, scrapedData, productInfo)
     ]);
     console.log("✅ All analyses completed");
@@ -506,16 +507,36 @@ Write naturally and conversationally. Be specific about WHY you would or wouldn'
         console.error("SSR calculation failed:", error);
     }
 }
-async function enrichWithAXAnalysis(evaluation, productUrl) {
+async function enrichWithAXAnalysis(evaluation, productUrl, scrapedData) {
     try {
-        const prompt = (0, ax_evaluator_1.createAXEvaluationPrompt)(productUrl);
+        // Tier 1: run the REAL agent-readiness probe first (best-effort).
+        let measuredSummary;
+        let measuredSignals = null;
+        try {
+            console.log("🔎 Probing agent-readiness for:", productUrl);
+            measuredSignals = await (0, ax_probe_1.probeAgentReadiness)(productUrl, scrapedData.error ? undefined : scrapedData.html);
+            measuredSummary = (0, ax_probe_1.buildMeasuredSignalsSummary)(measuredSignals);
+            console.log(`   Measured: llms.txt=${measuredSignals.llmsTxt.present}, robots=${measuredSignals.robotsTxt.present}, JSON-LD blocks=${measuredSignals.structuredData.jsonLdBlocks}, markdown-neg=${measuredSignals.contentNegotiation.supportsMarkdown}`);
+        }
+        catch (probeError) {
+            console.error("AX probe failed (falling back to estimated AX):", probeError);
+        }
+        const prompt = (0, ax_evaluator_1.createAXEvaluationPrompt)(productUrl, measuredSummary);
         const response = await anthropic.messages.create({
             model: "claude-opus-4-5-20251101",
             max_tokens: 1500,
             messages: [{ role: "user", content: prompt }],
         });
         const text = response.content[0].type === "text" ? response.content[0].text : "";
-        const agentExperience = (0, ax_evaluator_1.parseAgentExperience)(text);
+        let agentExperience = (0, ax_evaluator_1.parseAgentExperience)(text);
+        // Tier 1: override the verifiable factors with measured scores.
+        if (agentExperience && measuredSignals) {
+            const measuredScores = (0, ax_probe_1.computeMeasuredFactorScores)(measuredSignals);
+            agentExperience = (0, ax_evaluator_1.applyMeasuredSignals)(agentExperience, measuredScores, measuredSignals);
+        }
+        else if (agentExperience) {
+            agentExperience.scoreBasis = "estimated";
+        }
         if (agentExperience) {
             evaluation.agentExperience = agentExperience;
         }

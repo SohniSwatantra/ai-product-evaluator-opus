@@ -18,7 +18,8 @@ import path from "path";
 import { readFile, unlink } from "fs/promises";
 
 import { calculateSSR, compareMethodologies, getAnchorFromSSRScore } from "../lib/ssr-calculator";
-import { createAXEvaluationPrompt, parseAgentExperience } from "../lib/ax-evaluator";
+import { createAXEvaluationPrompt, parseAgentExperience, applyMeasuredSignals } from "../lib/ax-evaluator";
+import { probeAgentReadiness, computeMeasuredFactorScores, buildMeasuredSignalsSummary } from "../lib/ax-probe";
 import { scrapeWebsite, extractProductInfo } from "../lib/web-scraper";
 import { saveEvaluation, deductUserCredits } from "../lib/db";
 import type { Demographics, ProductEvaluation, SectionRecommendation } from "../types";
@@ -385,7 +386,7 @@ ${scrapedDataAppendix}
   console.log("🔄 Running parallel analyses (SSR, AX, Section Recommendations)...");
   await Promise.all([
     enrichWithSSRAnalysis(evaluation, validatedUrl, demographicDescription),
-    enrichWithAXAnalysis(evaluation, validatedUrl),
+    enrichWithAXAnalysis(evaluation, validatedUrl, scrapedData),
     enrichWithSectionRecommendations(evaluation, validatedUrl, demographicDescription, scrapedData, productInfo)
   ]);
   console.log("✅ All analyses completed");
@@ -568,9 +569,30 @@ Write naturally and conversationally. Be specific about WHY you would or wouldn'
   }
 }
 
-async function enrichWithAXAnalysis(evaluation: ProductEvaluation, productUrl: string) {
+async function enrichWithAXAnalysis(
+  evaluation: ProductEvaluation,
+  productUrl: string,
+  scrapedData: Awaited<ReturnType<typeof scrapeWebsite>>
+) {
   try {
-    const prompt = createAXEvaluationPrompt(productUrl);
+    // Tier 1: run the REAL agent-readiness probe first (best-effort).
+    let measuredSummary: string | undefined;
+    let measuredSignals: Awaited<ReturnType<typeof probeAgentReadiness>> | null = null;
+    try {
+      console.log("🔎 Probing agent-readiness for:", productUrl);
+      measuredSignals = await probeAgentReadiness(
+        productUrl,
+        scrapedData.error ? undefined : scrapedData.html
+      );
+      measuredSummary = buildMeasuredSignalsSummary(measuredSignals);
+      console.log(
+        `   Measured: llms.txt=${measuredSignals.llmsTxt.present}, robots=${measuredSignals.robotsTxt.present}, JSON-LD blocks=${measuredSignals.structuredData.jsonLdBlocks}, markdown-neg=${measuredSignals.contentNegotiation.supportsMarkdown}`
+      );
+    } catch (probeError) {
+      console.error("AX probe failed (falling back to estimated AX):", probeError);
+    }
+
+    const prompt = createAXEvaluationPrompt(productUrl, measuredSummary);
     const response = await anthropic.messages.create({
       model: "claude-opus-4-5-20251101",
       max_tokens: 1500,
@@ -578,7 +600,15 @@ async function enrichWithAXAnalysis(evaluation: ProductEvaluation, productUrl: s
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "";
-    const agentExperience = parseAgentExperience(text);
+    let agentExperience = parseAgentExperience(text);
+
+    // Tier 1: override the verifiable factors with measured scores.
+    if (agentExperience && measuredSignals) {
+      const measuredScores = computeMeasuredFactorScores(measuredSignals);
+      agentExperience = applyMeasuredSignals(agentExperience, measuredScores, measuredSignals);
+    } else if (agentExperience) {
+      agentExperience.scoreBasis = "estimated";
+    }
 
     if (agentExperience) {
       evaluation.agentExperience = agentExperience;

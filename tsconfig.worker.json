@@ -18,6 +18,7 @@
     "lib/ssr-calculator.ts",
     "lib/reference-anchors.ts",
     "lib/ax-evaluator.ts",
+    "lib/ax-probe.ts",
     "lib/web-scraper.ts",
     "lib/db.ts",
     "types/**/*.ts"
