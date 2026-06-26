@@ -337,7 +337,7 @@ Based on the research paper's methodology, classify purchase intent into one of 
 ${scrapedDataAppendix}
 `;
     const evaluationResponse = await anthropic.messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-8",
         max_tokens: 3000,
         messages: [{ role: "user", content: evaluationPrompt }],
     });
@@ -478,7 +478,7 @@ Consider:
 
 Write naturally and conversationally. Be specific about WHY you would or wouldn't buy it. Don't use a rating scale - just explain your thoughts and feelings about purchasing this product.`;
         const response = await anthropic.messages.create({
-            model: "claude-opus-4-5-20251101",
+            model: "claude-opus-4-8",
             max_tokens: 1000,
             messages: [{ role: "user", content: prompt }],
         });
@@ -523,7 +523,7 @@ async function enrichWithAXAnalysis(evaluation, productUrl, scrapedData) {
         }
         const prompt = (0, ax_evaluator_1.createAXEvaluationPrompt)(productUrl, measuredSummary);
         const response = await anthropic.messages.create({
-            model: "claude-opus-4-5-20251101",
+            model: "claude-opus-4-8",
             max_tokens: 1500,
             messages: [{ role: "user", content: prompt }],
         });
@@ -627,7 +627,7 @@ Example format:
 
 Provide 4-6 section recommendations focusing on the most impactful improvements for this specific demographic.`;
         const response = await anthropic.messages.create({
-            model: "claude-opus-4-5-20251101",
+            model: "claude-opus-4-8",
             max_tokens: 3000,
             messages: [{ role: "user", content: prompt }],
         });

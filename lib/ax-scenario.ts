@@ -53,7 +53,7 @@ export interface ScenarioResult {
   error?: string;
 }
 
-const AGENT_MODEL = "claude-opus-4-5-20251101";
+const AGENT_MODEL = "claude-opus-4-8";
 const MAX_TOOL_ITERATIONS = 4;
 const FETCH_TIMEOUT_MS = 8000;
 const AGENT_USER_AGENT =

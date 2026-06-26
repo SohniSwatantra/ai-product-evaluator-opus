@@ -226,7 +226,7 @@ async function detectSectionsWithVision(
     }
 
     const response = await anthropic.messages.create({
-      model: "claude-opus-4-5-20251101",
+      model: "claude-opus-4-8",
       max_tokens: 2000,
       messages: [
         {
