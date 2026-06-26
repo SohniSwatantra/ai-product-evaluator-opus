@@ -74,16 +74,47 @@ export function getAXScoreColor(score: number): string {
 }
 
 /**
+ * Robustly extract a JSON object from an LLM response.
+ * Strips markdown fences, then tries a strict parse; on failure runs a
+ * lenient repair pass (trailing commas, smart quotes, collapsed whitespace) —
+ * the same resilience the main evaluation parser uses. Newer models (e.g.
+ * Opus 4.8) occasionally emit JSON that fails a strict parse, which would
+ * otherwise drop the entire Agent Experience section.
+ */
+function extractJsonObject(response: string): any | null {
+  const payload = response.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+  const match = payload.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  const jsonStr = match[0];
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    // fall through to repair
+  }
+
+  try {
+    const repaired = jsonStr
+      .replace(/[“”]/g, '"') // smart double quotes -> "
+      .replace(/[‘’]/g, "'") // smart single quotes -> '
+      .replace(/,(\s*[}\]])/g, "$1") // trailing commas before } or ]
+      .replace(/\r/g, "")
+      .replace(/\t/g, " ");
+    return JSON.parse(repaired);
+  } catch (error) {
+    console.error("Failed to repair agent experience JSON:", error);
+    return null;
+  }
+}
+
+/**
  * Parse agent experience from Claude's response
  * This function extracts AX evaluation from the AI's analysis
  */
 export function parseAgentExperience(response: string): AgentExperience | null {
   try {
-    // Try to extract JSON block
-    const jsonMatch = response.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const data = JSON.parse(jsonMatch[0]);
+    const data = extractJsonObject(response);
+    if (!data || !Array.isArray(data.factors)) return null;
 
     // Calculate final scores
     const { axScore, anps } = calculateAXScore(data.factors);

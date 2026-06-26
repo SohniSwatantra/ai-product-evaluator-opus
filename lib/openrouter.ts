@@ -155,20 +155,27 @@ export function parseAXResponse(response: string): {
   recommendations: string[];
 } | null {
   try {
-    // Remove any markdown code blocks if present
-    let cleanedResponse = response.trim();
-    if (cleanedResponse.startsWith("```json")) {
-      cleanedResponse = cleanedResponse.slice(7);
-    }
-    if (cleanedResponse.startsWith("```")) {
-      cleanedResponse = cleanedResponse.slice(3);
-    }
-    if (cleanedResponse.endsWith("```")) {
-      cleanedResponse = cleanedResponse.slice(0, -3);
-    }
-    cleanedResponse = cleanedResponse.trim();
+    // Strip markdown fences, isolate the JSON object, then parse with a
+    // lenient repair fallback (some models emit prose around the JSON or
+    // slightly malformed JSON that fails a strict parse).
+    const stripped = response.replace(/```json\s*/gi, "").replace(/```\s*/g, "");
+    const match = stripped.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const jsonStr = match[0];
 
-    const parsed = JSON.parse(cleanedResponse);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      parsed = JSON.parse(
+        jsonStr
+          .replace(/[“”]/g, '"')
+          .replace(/[‘’]/g, "'")
+          .replace(/,(\s*[}\]])/g, "$1")
+          .replace(/\r/g, "")
+          .replace(/\t/g, " ")
+      );
+    }
 
     // Calculate ANPS from AX score
     const axScore = Math.round(parsed.axScore || 0);
